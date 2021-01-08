@@ -1,6 +1,14 @@
 # ti-sync-bot
 
-> A GitHub App built with [Probot](https://github.com/probot/probot) that A Github App that used to sync tidb community info that contains pull request / issue / contributor info.
+A GitHub App built with [Probot](https://github.com/probot/probot) that used to sync tidb community info to database, for providing basic data for other bots.
+
+## Require
+
+- Git >= 2.13.0 (**For husky support**)
+- Node >= 10
+- MYSQL 5.7
+- Docker
+- Docker Compose >= 3
 
 ## Setup
 

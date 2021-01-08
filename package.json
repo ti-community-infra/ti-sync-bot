@@ -16,24 +16,44 @@
   "scripts": {
     "build": "tsc",
     "start": "probot run ./lib/index.js",
-    "test": "jest"
+    "test": "jest",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" *.md package.json tsconfig.json",
+    "lint:fix": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" *.md package.json tsconfig.json"
   },
   "dependencies": {
-    "probot": "^11.0.1"
+    "probot": "^11.0.1",
+    "reflect-metadata": "^0.1.10",
+    "typedi": "^0.8.0",
+    "typeorm": "0.2.29",
+    "typeorm-typedi-extensions": "^0.2.3",
+    "yaml": "^1.10.0"
   },
   "devDependencies": {
+    "@semantic-release/commit-analyzer": "^8.0.1",
+    "@semantic-release/git": "^9.0.0",
+    "@semantic-release/github": "^7.2.0",
+    "@semantic-release/npm": "^7.0.8",
+    "@semantic-release/release-notes-generator": "^9.0.1",
     "@types/jest": "^26.0.19",
     "@types/node": "^14.14.19",
+    "typescript": "^4.1.3",
     "jest": "^26.6.3",
-    "nock": "^13.0.5",
-    "smee-client": "^1.2.2",
     "ts-jest": "^26.4.4",
-    "typescript": "^4.1.3"
+    "nock": "^13.0.5",
+    "husky": "^4.3.6",
+    "nodemon": "^2.0.6",
+    "prettier": "2.2.1",
+    "smee-client": "^1.2.2"
   },
   "engines": {
     "node": ">= 10.13.0"
   },
   "jest": {
     "testEnvironment": "node"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run lint && npm test"
+    }
   }
 }
