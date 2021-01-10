@@ -18,6 +18,7 @@
     "build:watch": "tsc && (tsc -w --preserveWatchOutput & nodemon)",
     "dev": "npm run build:watch",
     "start": "probot run ./lib/index.js",
+    "doc:preview": "docsify serve docs --port 3018",
     "test": "jest",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" *.md package.json tsconfig.json",
     "lint:fix": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" *.md package.json tsconfig.json"
