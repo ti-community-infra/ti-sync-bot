@@ -8,13 +8,13 @@ module.exports ={
     timezone: 'Z',
     logging: false,
     entities: [
-       "src/db/entities/**/*.ts"
+       "lib/db/entities/**/*.js"
     ],
     migrations: [
-       "src/db/migrations/**/*.ts"
+       "lib/db/migrations/**/*.js"
     ],
     subscribers: [
-       "src/db/subscribers/**/*.ts"
+       "lib/db/subscribers/**/*.js"
     ],
     cli: {
        "entitiesDir":  "src/db/entities",

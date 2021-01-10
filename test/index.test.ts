@@ -18,7 +18,7 @@ const privateKey = fs.readFileSync(
   "utf-8"
 );
 
-describe("My Probot app", () => {
+describe("Ti Sync Bot", () => {
   let probot: any;
 
   beforeEach(() => {

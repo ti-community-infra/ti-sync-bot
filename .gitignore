@@ -1,7 +1,25 @@
+# Dependency directories
 node_modules
+
+# Logs
+logs
 npm-debug.log
+
+# Private key
 *.pem
 !mock-cert.pem
+
+# Environment variable
 .env
+
+# Optional npm cache directory
+.npm
+
+# Jest coverage report
 coverage
+
+# Generate output
 lib
+
+# IDEA Project File
+.idea

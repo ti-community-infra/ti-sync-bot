@@ -1,0 +1,12 @@
+# Codecov Config File
+# Reference documentation: https://docs.codecov.io/docs/codecovyml-reference
+
+codecov:
+  branch: main
+
+coverage:
+  status:
+    project:
+      default:
+        # Fail the status if coverage drops by >= 5%
+        threshold: 5
