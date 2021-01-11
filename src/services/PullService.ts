@@ -4,9 +4,9 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 import { Pull } from "../db/entities/Pull";
 import { Repository } from "typeorm";
 import { ILoggerToken } from "../common/global";
-import { DeprecatedLogger } from "probot/lib/types";
 import { timeALaterThanTimeB } from "../utils/util";
 import { encodeLabelArray } from "../utils/parser";
+import { Logger } from "probot";
 
 export const IPullServiceToken = new Token<IPullService>();
 
@@ -20,12 +20,13 @@ export class PullService implements IPullService {
     @InjectRepository(Pull)
     private pullRepository: Repository<Pull>,
     @Inject(ILoggerToken)
-    private log: DeprecatedLogger
+    private log: Logger
   ) {}
 
   async syncPullRequest(syncPullQuery: SyncPullQuery) {
     let { owner, repo, pull } = syncPullQuery;
 
+    // Get existing records from the database for comparison.
     let pullInDB = await this.pullRepository.findOne({
       where: {
         owner: owner,
@@ -38,6 +39,7 @@ export class PullService implements IPullService {
       pullInDB = new Pull();
     }
 
+    // Ignore outdated PR data.
     const isPRUpdated = timeALaterThanTimeB(
       pull.updated_at,
       pullInDB.updatedAt
@@ -50,24 +52,22 @@ export class PullService implements IPullService {
       return;
     }
 
-    // Patch the merged status.
-    let status = pull.state;
-
-    if (pull.merged_at !== null) {
-      status = "merged";
-    }
-
     // TODO: patch the relation field.
+    // Patch the relation field.
     pullInDB.relation =
       pull.author_association === "MEMBER" ? "member" : "not member";
+    // Patch the merged status.
+    pullInDB.status = pull.merged_at !== null ? "merged" : pull.state;
+    // Patch the labels field.
+    pullInDB.label = encodeLabelArray(pull.labels);
+
+    pullInDB.user = pull.user ? pull.user.login : "";
+
     pullInDB.owner = owner;
     pullInDB.repo = repo;
     pullInDB.pullNumber = pull.number;
     pullInDB.title = pull.title;
     pullInDB.body = pull.body;
-    pullInDB.label = encodeLabelArray(pull.labels);
-    pullInDB.status = status;
-    pullInDB.user = pull.user ? pull.user.login : "";
     pullInDB.association = pull.author_association;
     pullInDB.createdAt = pull.created_at;
     pullInDB.updatedAt = pull.updated_at;

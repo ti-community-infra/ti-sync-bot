@@ -2,7 +2,6 @@ export interface SyncPullQuery {
   owner: string;
   repo: string;
   pull: {
-    id: number;
     number: number;
     state: string;
     locked: boolean;

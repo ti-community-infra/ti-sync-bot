@@ -38,7 +38,6 @@ export class Pull {
   @Column({ type: "varchar", length: 128 })
   status!: string;
 
-  // FIXME: maybe this means issue created time.
   @Column({
     name: "created_at",
     type: "timestamp",
