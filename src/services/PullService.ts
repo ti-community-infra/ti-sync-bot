@@ -5,7 +5,7 @@ import { Pull } from "../db/entities/Pull";
 import { Repository } from "typeorm";
 import { ILoggerToken } from "../common/global";
 import { DeprecatedLogger } from "probot/lib/types";
-import { isBefore } from "../utils/util";
+import { timeALaterThanTimeB } from "../utils/util";
 import { encodeLabelArray } from "../utils/parser";
 
 export const IPullServiceToken = new Token<IPullService>();
@@ -38,9 +38,13 @@ export class PullService implements IPullService {
       pullInDB = new Pull();
     }
 
-    const isPRUpdated = isBefore(pullInDB.updatedAt, pull.updated_at);
-    if (isPRUpdated) {
-      this.log.debug(
+    const isPRUpdated = timeALaterThanTimeB(
+      pull.updated_at,
+      pullInDB.updatedAt
+    );
+
+    if (!isPRUpdated) {
+      this.log.info(
         `sync pull request ${owner}/${repo}#${pull.number}, but not updated`
       );
       return;
@@ -56,7 +60,6 @@ export class PullService implements IPullService {
     // TODO: patch the relation field.
     pullInDB.relation =
       pull.author_association === "MEMBER" ? "member" : "not member";
-
     pullInDB.owner = owner;
     pullInDB.repo = repo;
     pullInDB.pullNumber = pull.number;

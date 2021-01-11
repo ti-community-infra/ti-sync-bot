@@ -25,8 +25,10 @@ export function getChildLogger(
   };
 }
 
-// TODO: add time comparison util function.
-// isBefore is used to determine that whether time A before time B.
-export function isBefore(timeA: string, timeB: string) {
-  return Number(Date.parse(timeA)) < Number(Date.parse(timeB));
+// timeALaterThanTimeB is used to determine that whether time A later than time B.
+export function timeALaterThanTimeB(timeAStr: string, timeBStr: string) {
+  const timeA = timeAStr !== undefined ? Number(Date.parse(timeAStr)) : 0;
+  const timeB = timeBStr !== undefined ? Number(Date.parse(timeBStr)) : 0;
+
+  return timeA > timeB;
 }

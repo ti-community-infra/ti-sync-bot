@@ -5,6 +5,7 @@ import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
 import { getChildLogger } from "./utils/util";
 import {
+  handleAppInstallOnAccountEvent,
   handleAppInstallOnRepoEvent,
   handleAppStartUpEvent,
 } from "./events/app";
@@ -36,11 +37,19 @@ export = (app: Probot) => {
       // WebHook Listen
       // You can learn more about webhook through the following documents:
       // {@link https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events}
+
       app.on("ping", async (context: Context) => {
         context.log.info("pong");
       });
 
-      app.on("installation_repositories", async (context: Context) => {
+      app.on("installation.created", async (context: Context) => {
+        handleAppInstallOnAccountEvent(
+          context,
+          Container.get(IPullServiceToken)
+        );
+      });
+
+      app.on("installation_repositories.added", async (context: Context) => {
         handleAppInstallOnRepoEvent(context, Container.get(IPullServiceToken));
       });
 

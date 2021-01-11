@@ -7,25 +7,53 @@ interface RepoConfig {
   repo: string;
 }
 
+// Triggered when the program starts.
 export async function handleAppStartUpEvent(
   gc: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService
 ) {
   // TODO: get repositories from installed list.
-  const repoConfigs: RepoConfig[] = [{ owner: "pingcap", repo: "br" }];
+  const repoConfigs: RepoConfig[] = [];
 
   for (let repoConfig of repoConfigs) {
     await handleSyncRepo(repoConfig, gc, pullService);
   }
 }
 
+// Triggered when the user first installs the bot to the account.
+export function handleAppInstallOnAccountEvent(
+  context: Context,
+  pullService: IPullService
+) {
+  const { installation, repositories } = context.payload;
+  const repoConfigs = repositories.map((repository: { name: string }) => {
+    return {
+      owner: installation.account.login,
+      repo: repository.name,
+    };
+  });
+
+  for (let repoConfig of repoConfigs) {
+    handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
+  }
+}
+
+// Triggered when the user installs the bot in the account already installed to another new repository.
 export function handleAppInstallOnRepoEvent(
   context: Context,
   pullService: IPullService
 ) {
-  let repoConfig = context.repo();
+  const { installation, repositories_added } = context.payload;
+  const repoConfigs = repositories_added.map((repository: { name: string }) => {
+    return {
+      owner: installation.account.login,
+      repo: repository.name,
+    };
+  });
 
-  handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
+  for (let repoConfig of repoConfigs) {
+    handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
+  }
 }
 
 async function handleSyncRepo(
