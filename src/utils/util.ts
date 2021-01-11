@@ -1,6 +1,6 @@
 import { DeprecatedLogger } from "probot/lib/types";
 
-// sleep used to pause execution for specified time.
+// sleep used to pause execution for specified time, the unit is milliseconds.
 export function sleep(time = 0) {
   return new Promise((resolve, _) => {
     setTimeout(() => {
@@ -26,3 +26,7 @@ export function getChildLogger(
 }
 
 // TODO: add time comparison util function.
+// isBefore is used to determine that whether time A before time B.
+export function isBefore(timeA: string, timeB: string) {
+  return Number(Date.parse(timeA)) < Number(Date.parse(timeB));
+}
