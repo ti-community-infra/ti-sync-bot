@@ -12,11 +12,7 @@ export async function handleAppStartUpEvent(
   pullService: IPullService
 ) {
   // TODO: get repositories from installed list.
-  const repoConfigs: RepoConfig[] = [
-    { owner: "pingcap", repo: "tidb" },
-    { owner: "pingcap", repo: "br" },
-    { owner: "tikv", repo: "tikv" },
-  ];
+  const repoConfigs: RepoConfig[] = [{ owner: "pingcap", repo: "br" }];
 
   for (let repoConfig of repoConfigs) {
     await handleSyncRepo(repoConfig, gc, pullService);
