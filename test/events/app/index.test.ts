@@ -19,7 +19,7 @@ describe("Test for app event handle", () => {
       {
         name: "two sync repo",
         // Notice: the space is to test trim.
-        syncReposInEnv: "tikv / tikv ; pingcap / tidb ",
+        syncReposInEnv: "tikv / tikv , pingcap / tidb ",
         expectSyncRepos: [
           { owner: "tikv", repo: "tikv" },
           { owner: "pingcap", repo: "tidb" },

@@ -123,10 +123,10 @@ export async function getSyncRepositoryListFromInstallation(app: Probot) {
 
 // Get the sync repository config from the .env file.
 // The option `SYNC_REPOS` is the full name of the repository separated
-// by semicolon, for example: pingcap/tidb;tikv/tikv.
+// by comma, for example: pingcap/tidb,tikv/tikv.
 function getSyncRepositoryListFromEnv() {
   const s = process.env.SYNC_REPOS;
-  const fullNames = s === undefined ? [] : s.trim().split(";");
+  const fullNames = s === undefined ? [] : s.trim().split(",");
   const syncRepos: RepoConfig[] = [];
 
   for (let fullName of fullNames) {
