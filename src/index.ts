@@ -10,7 +10,6 @@ import {
 } from "./events/app";
 import { IPullServiceToken } from "./services/PullService";
 import { ILoggerToken } from "./common/global";
-import { getChildLogger } from "./utils/util";
 
 export = async (app: Probot) => {
   // Init Container
@@ -24,7 +23,7 @@ export = async (app: Probot) => {
     auth: {
       token: process.env.GITHUB_ACCESS_TOKEN,
     },
-    log: getChildLogger(app.log, "octokit", "info"),
+    log: app.log,
   });
 
   // Connect Database

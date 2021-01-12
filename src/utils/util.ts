@@ -25,6 +25,7 @@ export function getChildLogger(
   };
 }
 
+// TODO: Refactor the LaterThan function.
 // timeALaterThanTimeB is used to determine that whether time A later than time B.
 export function timeALaterThanTimeB(timeAStr: string, timeBStr: string) {
   const timeA = timeAStr !== undefined ? Number(Date.parse(timeAStr)) : 0;
