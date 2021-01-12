@@ -3,7 +3,6 @@ import "reflect-metadata";
 import { Context, Probot, ProbotOctokit } from "probot";
 import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
-import { getChildLogger } from "./utils/util";
 import {
   handleAppInstallOnAccountEvent,
   handleAppInstallOnRepoEvent,
@@ -11,13 +10,16 @@ import {
 } from "./events/app";
 import { IPullServiceToken } from "./services/PullService";
 import { ILoggerToken } from "./common/global";
+import { getChildLogger } from "./utils/util";
 
-export = (app: Probot) => {
+export = async (app: Probot) => {
   // Init Container
   useContainer(Container);
   Container.set(ILoggerToken, app.log);
 
   // Init Github Client
+  // Notice: This client uses a TOKEN as the bot github account for access, in this case, we do not need to
+  // authorize for each installation through the Github APP, but this will also bring some restrictions.
   const githubClient = new ProbotOctokit({
     auth: {
       token: process.env.GITHUB_ACCESS_TOKEN,
@@ -28,8 +30,11 @@ export = (app: Probot) => {
   // Connect Database
   createConnection()
     .then(() => {
-      // Handle application start up event,
+      // Handle application start up event.
+      // Notice: Full sync at startup will not block the subsequent execution of
+      // WebHook-based incremental sync, and the two are executed concurrently.
       handleAppStartUpEvent(
+        app,
         githubClient,
         Container.get(IPullServiceToken)
       ).then(null);
@@ -51,13 +56,6 @@ export = (app: Probot) => {
 
       app.on("installation_repositories.added", async (context: Context) => {
         handleAppInstallOnRepoEvent(context, Container.get(IPullServiceToken));
-      });
-
-      app.on("issues.opened", async (context) => {
-        const issueComment = context.issue({
-          body: "Thanks for opening this issue!",
-        });
-        await context.octokit.issues.createComment(issueComment);
       });
     })
     .catch((err) => {

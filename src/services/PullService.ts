@@ -52,17 +52,22 @@ export class PullService implements IPullService {
       return;
     }
 
+    // Patch the merged status.
+    let status = pull.state;
+    if (pull.merged_at !== null && status == "closed") {
+      status = "merged";
+    }
+
     // TODO: patch the relation field.
     // Patch the relation field.
     pullInDB.relation =
       pull.author_association === "MEMBER" ? "member" : "not member";
-    // Patch the merged status.
-    pullInDB.status = pull.merged_at !== null ? "merged" : pull.state;
+
     // Patch the labels field.
     pullInDB.label = encodeLabelArray(pull.labels);
 
     pullInDB.user = pull.user ? pull.user.login : "";
-
+    pullInDB.status = status;
     pullInDB.owner = owner;
     pullInDB.repo = repo;
     pullInDB.pullNumber = pull.number;

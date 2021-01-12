@@ -1,4 +1,4 @@
 import { Token } from "typedi";
-import { DeprecatedLogger } from "probot/lib/types";
+import { Logger } from "probot";
 
-export const ILoggerToken = new Token<DeprecatedLogger>();
+export const ILoggerToken = new Token<Logger>();
