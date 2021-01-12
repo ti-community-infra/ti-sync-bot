@@ -5,6 +5,7 @@ module.exports ={
     username: process.env.BOT_DB_USERNAME,
     password: process.env.BOT_DB_PASSWORD,
     database: process.env.BOT_DB_NAME,
+    // To support emoji character.
     charset: 'UTF8MB4_GENERAL_CI',
     timezone: 'Z',
     logging: false,

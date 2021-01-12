@@ -1,5 +1,5 @@
 import nock from "nock";
-import { IPullService, PullService } from "../../lib/services/PullService";
+import { IPullService, PullService } from "../../src/services/PullService";
 import { Repository } from "typeorm";
 import { Pull } from "../../src/db/entities/Pull";
 import { getLog } from "probot/lib/helpers/get-log";

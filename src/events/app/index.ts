@@ -44,7 +44,8 @@ export function handleAppInstallOnAccountEvent(
   }
 }
 
-// Triggered when the user installs the bot in the account already installed to another new repository.
+// Triggered when the user installs the bot to another new repository
+// of the account, which has already installed the bot.
 export function handleAppInstallOnRepoEvent(
   context: Context,
   pullService: IPullService
@@ -62,12 +63,15 @@ export function handleAppInstallOnRepoEvent(
   }
 }
 
+// General handling of a repo.
 async function handleSyncRepo(
   repoConfig: RepoConfig,
   gc: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService
 ) {
   const { owner, repo } = repoConfig;
+
+  // Load Pull Request in pagination mode.
   const iterator = gc.paginate.iterator(gc.pulls.list, {
     owner: owner,
     repo: repo,
@@ -79,6 +83,7 @@ async function handleSyncRepo(
   gc.log.info(`syncing pull request from ${owner}/${repo}`);
 
   for await (const res of iterator) {
+    // Process a page of data.
     for (const pull of res.data) {
       await pullService.syncPullRequest({
         owner: owner,
@@ -92,16 +97,16 @@ async function handleSyncRepo(
 }
 
 // Get all the repositories where bots are installed.
-// Notice: only fetch the public repository.
-async function getSyncRepositoryListFromInstallation(app: Probot) {
+// Notice: only fetch the public, not archived and not enable repository.
+export async function getSyncRepositoryListFromInstallation(app: Probot) {
   const syncRepos: RepoConfig[] = [];
   const gc = await app.auth();
   const { data: installations } = await gc.apps.listInstallations();
 
   for (let i of installations) {
-    let github = await app.auth(i.id);
-    let res = await github.apps.listReposAccessibleToInstallation();
-    let repositories = res.data.repositories;
+    const github = await app.auth(i.id);
+    const res = await github.apps.listReposAccessibleToInstallation();
+    const repositories = res.data.repositories;
 
     for (let repository of repositories) {
       if (!repository.private && !repository.disabled && !repository.archived) {
@@ -119,9 +124,9 @@ async function getSyncRepositoryListFromInstallation(app: Probot) {
 // Get the sync repository config from the .env file.
 // The option `SYNC_REPOS` is the full name of the repository separated
 // by semicolon, for example: pingcap/tidb;tikv/tikv.
-async function getSyncRepositoryListFromEnv() {
+function getSyncRepositoryListFromEnv() {
   const s = process.env.SYNC_REPOS;
-  const fullNames = s === undefined ? [] : s.split(";");
+  const fullNames = s === undefined ? [] : s.trim().split(";");
   const syncRepos: RepoConfig[] = [];
 
   for (let fullName of fullNames) {
@@ -129,8 +134,8 @@ async function getSyncRepositoryListFromEnv() {
 
     if (arr.length === 2) {
       syncRepos.push({
-        owner: arr[0],
-        repo: arr[1],
+        owner: arr[0].trim(),
+        repo: arr[1].trim(),
       });
     }
   }
