@@ -1,12 +1,14 @@
-import { SyncPullQuery } from "../queries/SyncPullQuery";
+import { Logger } from "probot";
 import { Inject, Service, Token } from "typedi";
-import { InjectRepository } from "typeorm-typedi-extensions";
-import { Pull } from "../db/entities/Pull";
 import { Repository } from "typeorm";
-import { ILoggerToken } from "../common/global";
+import { InjectRepository } from "typeorm-typedi-extensions";
+
+import { ILoggerToken } from "../common/token";
 import { timeALaterThanTimeB } from "../utils/util";
 import { encodeLabelArray } from "../utils/parser";
-import { Logger } from "probot";
+
+import { Pull } from "../db/entities/Pull";
+import { SyncPullQuery } from "../queries/SyncPullQuery";
 
 export const IPullServiceToken = new Token<IPullService>();
 
@@ -36,7 +38,7 @@ export class PullService implements IPullService {
     });
 
     if (pullInDB === undefined) {
-      pullInDB = new Pull();
+      pullInDB = PullService.makePull(owner, repo, pull.number);
     }
 
     // Ignore outdated PR data.
@@ -65,12 +67,8 @@ export class PullService implements IPullService {
 
     // Patch the labels field.
     pullInDB.label = encodeLabelArray(pull.labels);
-
     pullInDB.user = pull.user ? pull.user.login : "";
     pullInDB.status = status;
-    pullInDB.owner = owner;
-    pullInDB.repo = repo;
-    pullInDB.pullNumber = pull.number;
     pullInDB.title = pull.title;
     pullInDB.body = pull.body;
     pullInDB.association = pull.author_association;
@@ -91,4 +89,14 @@ export class PullService implements IPullService {
   }
 
   async syncPullRequestStatus() {}
+
+  private static makePull(owner: string, repo: string, number: number): Pull {
+    const pull = new Pull();
+
+    pull.owner = owner;
+    pull.repo = repo;
+    pull.pullNumber = number;
+
+    return pull;
+  }
 }

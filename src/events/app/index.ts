@@ -7,10 +7,15 @@ interface RepoConfig {
   repo: string;
 }
 
-// Triggered when the program starts.
+/**
+ * Handle the event that triggered when the program start up.
+ * @param app
+ * @param github
+ * @param pullService
+ */
 export async function handleAppStartUpEvent(
   app: Probot,
-  gc: InstanceType<typeof ProbotOctokit>,
+  github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService
 ) {
   let repoConfigs: RepoConfig[];
@@ -21,58 +26,75 @@ export async function handleAppStartUpEvent(
     repoConfigs = await getSyncRepositoryListFromInstallation(app);
   }
 
-  for (let repoConfig of repoConfigs) {
-    await handleSyncRepo(repoConfig, gc, pullService);
+  for (const repoConfig of repoConfigs) {
+    await handleSyncRepo(repoConfig, github, pullService);
   }
 }
 
-// Triggered when the user first installs the bot to the account.
-export function handleAppInstallOnAccountEvent(
+/**
+ * handle the event that triggered when the user first installs the bot to the account.
+ * @param context
+ * @param pullService
+ */
+export async function handleAppInstallOnAccountEvent(
   context: Context,
   pullService: IPullService
 ) {
   const { installation, repositories } = context.payload;
-  const repoConfigs = repositories.map((repository: { name: string }) => {
-    return {
-      owner: installation.account.login,
-      repo: repository.name,
-    };
-  });
+  const repoConfigs: RepoConfig[] = repositories.map(
+    (repository: { name: string }) => {
+      return {
+        owner: installation.account.login,
+        repo: repository.name,
+      };
+    }
+  );
 
-  for (let repoConfig of repoConfigs) {
-    handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
+  for (const repoConfig of repoConfigs) {
+    await handleSyncRepo(repoConfig, context.octokit, pullService);
   }
 }
 
-// Triggered when the user installs the bot to another new repository
-// of the account, which has already installed the bot.
-export function handleAppInstallOnRepoEvent(
+/**
+ * Handle the event that triggered when the user installs the bot to another new repository
+ * of the account, which has already installed the bot.
+ * @param context
+ * @param pullService
+ */
+export async function handleAppInstallOnRepoEvent(
   context: Context,
   pullService: IPullService
 ) {
   const { installation, repositories_added } = context.payload;
-  const repoConfigs = repositories_added.map((repository: { name: string }) => {
-    return {
-      owner: installation.account.login,
-      repo: repository.name,
-    };
-  });
+  const repoConfigs: RepoConfig[] = repositories_added.map(
+    (repository: { name: string }) => {
+      return {
+        owner: installation.account.login,
+        repo: repository.name,
+      };
+    }
+  );
 
-  for (let repoConfig of repoConfigs) {
+  repoConfigs.forEach((repoConfig) => {
     handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
-  }
+  });
 }
 
-// General handling of a repo.
+/**
+ * General handling for syncing a repository.
+ * @param repoConfig
+ * @param github
+ * @param pullService
+ */
 async function handleSyncRepo(
   repoConfig: RepoConfig,
-  gc: InstanceType<typeof ProbotOctokit>,
+  github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService
 ) {
   const { owner, repo } = repoConfig;
 
   // Load Pull Request in pagination mode.
-  const iterator = gc.paginate.iterator(gc.pulls.list, {
+  const iterator = github.paginate.iterator(github.pulls.list, {
     owner: owner,
     repo: repo,
     state: "all",
@@ -80,7 +102,7 @@ async function handleSyncRepo(
     direction: "asc",
   });
 
-  gc.log.info(`syncing pull request from ${owner}/${repo}`);
+  github.log.info(`syncing pull request from ${owner}/${repo}`);
 
   for await (const res of iterator) {
     // Process a page of data.
@@ -96,12 +118,17 @@ async function handleSyncRepo(
   }
 }
 
-// Get all the repositories where bots are installed.
-// Notice: only fetch the public, not archived and not enable repository.
-export async function getSyncRepositoryListFromInstallation(app: Probot) {
+/**
+ * Get all the repositories where bots are installed.
+ * Notice: only fetch the public, not archived and not enable repository.
+ * @param app
+ */
+export async function getSyncRepositoryListFromInstallation(
+  app: Probot
+): Promise<RepoConfig[]> {
   const syncRepos: RepoConfig[] = [];
-  const gc = await app.auth();
-  const { data: installations } = await gc.apps.listInstallations();
+  const github = await app.auth();
+  const { data: installations } = await github.apps.listInstallations();
 
   for (let i of installations) {
     const github = await app.auth(i.id);
@@ -121,10 +148,12 @@ export async function getSyncRepositoryListFromInstallation(app: Probot) {
   return syncRepos;
 }
 
-// Get the sync repository config from the .env file.
-// The option `SYNC_REPOS` is the full name of the repository separated
-// by comma, for example: pingcap/tidb,tikv/tikv.
-function getSyncRepositoryListFromEnv() {
+/**
+ * Get the sync repository config from the .env file.
+ * The option `SYNC_REPOS` is the full name of the repository separated by comma,
+ * for example: pingcap/tidb,tikv/tikv.
+ */
+function getSyncRepositoryListFromEnv(): RepoConfig[] {
   const s = process.env.SYNC_REPOS;
   const fullNames = s === undefined ? [] : s.trim().split(",");
   const syncRepos: RepoConfig[] = [];

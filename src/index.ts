@@ -1,46 +1,44 @@
 import "reflect-metadata";
-
 import { Context, Probot, ProbotOctokit } from "probot";
 import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
+
+import { IPullServiceToken } from "./services/PullService";
+import { ILoggerToken } from "./common/token";
 import {
   handleAppInstallOnAccountEvent,
   handleAppInstallOnRepoEvent,
   handleAppStartUpEvent,
 } from "./events/app";
-import { IPullServiceToken } from "./services/PullService";
-import { ILoggerToken } from "./common/global";
 
 export = async (app: Probot) => {
-  // Init Container
+  // Init container.
   useContainer(Container);
   Container.set(ILoggerToken, app.log);
 
-  // Init Github Client
-  // Notice: This client uses a TOKEN as the bot github account for access, in this case, we do not need to
+  // Init Github client.
+  // Notice: This github client uses a TOKEN as the bot github account for access, in this case, we do not need to
   // authorize for each installation through the Github APP, but this will also bring some restrictions.
-  const githubClient = new ProbotOctokit({
+  const github = new ProbotOctokit({
     auth: {
       token: process.env.GITHUB_ACCESS_TOKEN,
     },
     log: app.log,
   });
 
-  // Connect Database
+  // Connect database.
   createConnection()
     .then(() => {
       // Handle application start up event.
       // Notice: Full sync at startup will not block the subsequent execution of
       // WebHook-based incremental sync, and the two are executed concurrently.
-      handleAppStartUpEvent(
-        app,
-        githubClient,
-        Container.get(IPullServiceToken)
-      ).then(null);
+      handleAppStartUpEvent(app, github, Container.get(IPullServiceToken)).then(
+        null
+      );
 
-      // WebHook Listen
+      // Establish WebHook listen.
       // You can learn more about webhook through the following documents:
-      // {@link https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events}
+      // https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events
 
       app.on("ping", async (context: Context) => {
         context.log.info("pong");

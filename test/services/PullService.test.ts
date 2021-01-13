@@ -1,10 +1,12 @@
 import nock from "nock";
-import { IPullService, PullService } from "../../src/services/PullService";
 import { Repository } from "typeorm";
-import { Pull } from "../../src/db/entities/Pull";
 import { getLog } from "probot/lib/helpers/get-log";
-import { SyncPullQuery } from "../../src/queries/SyncPullQuery";
+
 const typeorm = require("typeorm");
+
+import { IPullService, PullService } from "../../src/services/PullService";
+import { Pull } from "../../src/db/entities/Pull";
+import { SyncPullQuery } from "../../src/queries/SyncPullQuery";
 
 describe("Test for PullService", () => {
   let pullService: IPullService;
