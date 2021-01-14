@@ -1,4 +1,4 @@
-import { timeALaterThanTimeB } from "../../lib/utils/util";
+import { timeALaterThanTimeB } from "../../src/utils/util";
 
 describe("Test util", () => {
   test("timeALaterThanTimeB: time A before time B", () => {

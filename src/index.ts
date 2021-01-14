@@ -4,6 +4,7 @@ import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
 
 import { IPullServiceToken } from "./services/PullService";
+import { ICommentServiceToken } from "./services/CommentService";
 import { ILoggerToken } from "./common/token";
 import {
   handleAppInstallOnAccountEvent,
@@ -33,9 +34,12 @@ export = async (app: Probot) => {
       // Handle application start up event.
       // Notice: Full sync at startup will not block the subsequent execution of
       // WebHook-based incremental sync, and the two are executed concurrently.
-      handleAppStartUpEvent(app, github, Container.get(IPullServiceToken)).then(
-        null
-      );
+      handleAppStartUpEvent(
+        app,
+        github,
+        Container.get(IPullServiceToken),
+        Container.get(ICommentServiceToken)
+      ).then(null);
 
       // Establish WebHook listen.
       // You can learn more about webhook through the following documents:
@@ -48,14 +52,16 @@ export = async (app: Probot) => {
       app.on("installation.created", async (context: Context) => {
         await handleAppInstallOnAccountEvent(
           context,
-          Container.get(IPullServiceToken)
+          Container.get(IPullServiceToken),
+          Container.get(ICommentServiceToken)
         );
       });
 
       app.on("installation_repositories.added", async (context: Context) => {
         await handleAppInstallOnRepoEvent(
           context,
-          Container.get(IPullServiceToken)
+          Container.get(IPullServiceToken),
+          Container.get(ICommentServiceToken)
         );
       });
     })

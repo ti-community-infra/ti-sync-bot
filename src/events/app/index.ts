@@ -1,24 +1,23 @@
 import { Context, Probot, ProbotOctokit } from "probot";
-import { IPullService } from "../../services/PullService";
+import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
 import { sleep } from "../../utils/util";
-
-export interface RepoConfig {
-  owner: string;
-  repo: string;
-}
+import { IPullService } from "../../services/PullService";
+import { ICommentService } from "../../services/CommentService";
 
 /**
  * Handle the event that triggered when the program start up.
  * @param app
  * @param github
  * @param pullService
+ * @param commentService
  */
 export async function handleAppStartUpEvent(
   app: Probot,
   github: InstanceType<typeof ProbotOctokit>,
-  pullService: IPullService
+  pullService: IPullService,
+  commentService: ICommentService
 ) {
-  let repoConfigs: RepoConfig[];
+  let repoConfigs: RepoKey[];
 
   if (process.env.SYNC_REPOS !== undefined) {
     repoConfigs = await getSyncRepositoryListFromEnv();
@@ -27,7 +26,7 @@ export async function handleAppStartUpEvent(
   }
 
   for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(repoConfig, github, pullService);
+    await handleSyncRepo(repoConfig, github, pullService, commentService);
   }
 }
 
@@ -35,13 +34,15 @@ export async function handleAppStartUpEvent(
  * handle the event that triggered when the user first installs the bot to the account.
  * @param context
  * @param pullService
+ * @param commentService
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context,
-  pullService: IPullService
+  pullService: IPullService,
+  commentService: ICommentService
 ) {
   const { installation, repositories } = context.payload;
-  const repoConfigs: RepoConfig[] = repositories.map(
+  const repoConfigs: RepoKey[] = repositories.map(
     (repository: { name: string }) => {
       return {
         owner: installation.account.login,
@@ -51,7 +52,12 @@ export async function handleAppInstallOnAccountEvent(
   );
 
   for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(repoConfig, context.octokit, pullService);
+    handleSyncRepo(
+      repoConfig,
+      context.octokit,
+      pullService,
+      commentService
+    ).then(null);
   }
 }
 
@@ -60,13 +66,15 @@ export async function handleAppInstallOnAccountEvent(
  * of the account, which has already installed the bot.
  * @param context
  * @param pullService
+ * @param commentService
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context,
-  pullService: IPullService
+  pullService: IPullService,
+  commentService: ICommentService
 ) {
   const { installation, repositories_added } = context.payload;
-  const repoConfigs: RepoConfig[] = repositories_added.map(
+  const repoConfigs: RepoKey[] = repositories_added.map(
     (repository: { name: string }) => {
       return {
         owner: installation.account.login,
@@ -76,27 +84,33 @@ export async function handleAppInstallOnRepoEvent(
   );
 
   for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(repoConfig, context.octokit, pullService);
+    await handleSyncRepo(
+      repoConfig,
+      context.octokit,
+      pullService,
+      commentService
+    );
   }
 }
 
 /**
  * General handling for syncing a repository.
- * @param repoConfig
+ * @param repoKey
  * @param github
  * @param pullService
+ * @param commentService
  */
 async function handleSyncRepo(
-  repoConfig: RepoConfig,
+  repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
-  pullService: IPullService
+  pullService: IPullService,
+  commentService: ICommentService
 ) {
-  const { owner, repo } = repoConfig;
+  const { owner, repo } = repoKey;
 
   // Load Pull Request in pagination mode.
   const iterator = github.paginate.iterator(github.pulls.list, {
-    owner: owner,
-    repo: repo,
+    ...repoKey,
     state: "all",
     per_page: 100,
     direction: "asc",
@@ -107,15 +121,55 @@ async function handleSyncRepo(
   for await (const res of iterator) {
     // Process a page of data.
     for (const pull of res.data) {
-      await pullService.syncPullRequest({
-        owner: owner,
-        repo: repo,
-        pull,
-      });
+      const pullKey = {
+        ...repoKey,
+        pull_number: pull.number,
+      };
+
+      // Sync pull request.
+      await pullService.syncPullRequest({ ...repoKey, pull });
+
+      // Sync comment.
+      await handleSyncPullComments(pullKey, github, commentService);
+
+      // TODO: Sync Open PR Status.
+      // TODO: Sync Contributor Email.
     }
 
     await sleep(1000);
   }
+}
+
+/**
+ * Handle the comments of pull request.
+ * @param pullKey
+ * @param github
+ * @param commentService
+ */
+async function handleSyncPullComments(
+  pullKey: PullKey,
+  github: InstanceType<typeof ProbotOctokit>,
+  commentService: ICommentService
+) {
+  const { reviews, reviewComments, comments } = await fetchAllTypeComments(
+    github,
+    pullKey
+  );
+
+  await commentService.syncPullRequestReviews({
+    pull: pullKey,
+    reviews: reviews,
+  });
+
+  await commentService.syncPullRequestReviewComments({
+    pull: pullKey,
+    review_comments: reviewComments,
+  });
+
+  await commentService.syncPullRequestComments({
+    pull: pullKey,
+    comments: comments,
+  });
 }
 
 /**
@@ -125,8 +179,8 @@ async function handleSyncRepo(
  */
 export async function getSyncRepositoryListFromInstallation(
   app: Probot
-): Promise<RepoConfig[]> {
-  const syncRepos: RepoConfig[] = [];
+): Promise<RepoKey[]> {
+  const syncRepos: RepoKey[] = [];
   const github = await app.auth();
   const { data: installations } = await github.apps.listInstallations();
 
@@ -153,10 +207,10 @@ export async function getSyncRepositoryListFromInstallation(
  * The option `SYNC_REPOS` is the full name of the repository separated by comma,
  * for example: pingcap/tidb,tikv/tikv.
  */
-function getSyncRepositoryListFromEnv(): RepoConfig[] {
+function getSyncRepositoryListFromEnv(): RepoKey[] {
   const s = process.env.SYNC_REPOS;
   const fullNames = s === undefined ? [] : s.trim().split(",");
-  const syncRepos: RepoConfig[] = [];
+  const syncRepos: RepoKey[] = [];
 
   fullNames.forEach((fullName) => {
     let arr = fullName.split("/");
@@ -170,4 +224,24 @@ function getSyncRepositoryListFromEnv(): RepoConfig[] {
   });
 
   return syncRepos;
+}
+
+/**
+ * Fetch all type comment of pull request.
+ * @param github
+ * @param pullKey
+ */
+async function fetchAllTypeComments(
+  github: InstanceType<typeof ProbotOctokit>,
+  pullKey: PullKey
+) {
+  const issueKey = pullKey2IssueKey(pullKey);
+  const reviews = await github.paginate(github.pulls.listReviews, pullKey);
+  const reviewComments = await github.paginate(
+    github.pulls.listReviewComments,
+    pullKey
+  );
+  const comments = await github.paginate(github.issues.listComments, issueKey);
+
+  return { reviews, reviewComments, comments };
 }
