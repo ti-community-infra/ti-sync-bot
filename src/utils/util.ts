@@ -1,6 +1,9 @@
-import { DeprecatedLogger } from "probot/lib/types";
+import { Logger } from "probot";
 
-// sleep used to pause execution for specified time.
+/**
+ * Pause execution for specified interval.
+ * @param time The time unit is milliseconds.
+ */
 export function sleep(time = 0) {
   return new Promise((resolve, _) => {
     setTimeout(() => {
@@ -9,12 +12,14 @@ export function sleep(time = 0) {
   });
 }
 
-// getChildLogger is the tool method to generate the child logger and to fix the `this` lost problem.
-export function getChildLogger(
-  logger: DeprecatedLogger,
-  name: string,
-  level: string
-) {
+/**
+ * Generate the child logger.
+ * Notice: This function is used to fix the `this` lost problem.
+ * @param logger Parent logger.
+ * @param name The name of child logger.
+ * @param level The level of child logger.
+ */
+export function getChildLogger(logger: Logger, name: string, level: string) {
   const childLogger = logger.child({ name: name, level: level });
 
   return {
@@ -25,4 +30,19 @@ export function getChildLogger(
   };
 }
 
-// TODO: add time comparison util function.
+// TODO: Refactor the LaterThan function.
+/**
+ * Determine that whether time A later than time B.
+ * @param timeAStr String of time A.
+ * @param timeBStr String of time B.
+ * @return If time A later than time B, return true.
+ */
+export function timeALaterThanTimeB(
+  timeAStr: string,
+  timeBStr: string
+): boolean {
+  const timeA = timeAStr !== undefined ? Number(Date.parse(timeAStr)) : 0;
+  const timeB = timeBStr !== undefined ? Number(Date.parse(timeBStr)) : 0;
+
+  return timeA > timeB;
+}

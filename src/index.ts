@@ -1,27 +1,62 @@
 import "reflect-metadata";
-
-import { Context, Probot } from "probot";
+import { Context, Probot, ProbotOctokit } from "probot";
 import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
 
-export = (app: Probot) => {
-  useContainer(Container);
+import { IPullServiceToken } from "./services/PullService";
+import { ILoggerToken } from "./common/token";
+import {
+  handleAppInstallOnAccountEvent,
+  handleAppInstallOnRepoEvent,
+  handleAppStartUpEvent,
+} from "./events/app";
 
-  // Connect Database
+export = async (app: Probot) => {
+  // Init container.
+  useContainer(Container);
+  Container.set(ILoggerToken, app.log);
+
+  // TODO: use the github client authed by installation id.
+  // Init Github client.
+  // Notice: This github client uses a TOKEN as the bot github account for access, in this case, we do not need to
+  // authorize for each installation through the Github APP, but this will also bring some restrictions.
+  const github = new ProbotOctokit({
+    auth: {
+      token: process.env.GITHUB_ACCESS_TOKEN,
+    },
+    log: app.log,
+  });
+
+  // Connect database.
   createConnection()
     .then(() => {
-      // WebHook Listen
+      // Handle application start up event.
+      // Notice: Full sync at startup will not block the subsequent execution of
+      // WebHook-based incremental sync, and the two are executed concurrently.
+      handleAppStartUpEvent(app, github, Container.get(IPullServiceToken)).then(
+        null
+      );
+
+      // Establish WebHook listen.
       // You can learn more about webhook through the following documents:
-      // {@link https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events}
+      // https://docs.github.com/en/free-pro-team@latest/developers/webhooks-and-events
+
       app.on("ping", async (context: Context) => {
         context.log.info("pong");
       });
 
-      app.on("issues.opened", async (context) => {
-        const issueComment = context.issue({
-          body: "Thanks for opening this issue!",
-        });
-        await context.octokit.issues.createComment(issueComment);
+      app.on("installation.created", async (context: Context) => {
+        await handleAppInstallOnAccountEvent(
+          context,
+          Container.get(IPullServiceToken)
+        );
+      });
+
+      app.on("installation_repositories.added", async (context: Context) => {
+        await handleAppInstallOnRepoEvent(
+          context,
+          Container.get(IPullServiceToken)
+        );
       });
     })
     .catch((err) => {
