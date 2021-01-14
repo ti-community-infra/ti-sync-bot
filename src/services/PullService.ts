@@ -29,6 +29,7 @@ export class PullService implements IPullService {
     private log: Logger
   ) {}
 
+  // TODO: refactor the sync pull request function.
   async syncPullRequest(syncPullQuery: SyncPullQuery) {
     const { owner, repo, pull } = syncPullQuery;
     const pullSignature = `${owner}/${repo}#${pull.number}`;
@@ -46,6 +47,7 @@ export class PullService implements IPullService {
       pullInDB = PullService.makePull(owner, repo, pull.number);
     }
 
+    // TODO: use time.laterThan instead of timeALaterThanTimeB.
     // Ignore outdated PR data.
     const isPRUpdated = timeALaterThanTimeB(
       pull.updated_at,

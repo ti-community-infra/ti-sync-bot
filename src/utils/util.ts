@@ -30,9 +30,9 @@ export function getChildLogger(logger: Logger, name: string, level: string) {
   };
 }
 
-// TODO: Refactor the LaterThan function.
 /**
  * Determine that whether time A later than time B.
+ * @deprecated
  * @param timeAStr String of time A.
  * @param timeBStr String of time B.
  * @return If time A later than time B, return true.

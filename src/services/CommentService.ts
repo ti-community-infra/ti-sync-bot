@@ -79,7 +79,7 @@ export class CommentService implements ICommentService {
 
   /**
    * Synchronize the received comment data to the database.
-   * @param commentReceived
+   * @param commentReceived The type of received comment can be review, review comment and common comment.
    */
   async syncComment(commentReceived: SyncCommentQuery) {
     const { repo, owner, id: commentId, comment_type: type } = commentReceived;
