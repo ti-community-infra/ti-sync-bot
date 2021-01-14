@@ -20,6 +20,7 @@ const typeorm = require("typeorm");
 //   "utf-8"
 // );
 
+// TODO: Clean up the unused code temporarily left here.
 describe("Ti Sync Bot", () => {
   // let probot: any;
 

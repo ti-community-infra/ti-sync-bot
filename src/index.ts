@@ -16,6 +16,7 @@ export = async (app: Probot) => {
   useContainer(Container);
   Container.set(ILoggerToken, app.log);
 
+  // TODO: use the github client authed by installation id.
   // Init Github client.
   // Notice: This github client uses a TOKEN as the bot github account for access, in this case, we do not need to
   // authorize for each installation through the Github APP, but this will also bring some restrictions.
@@ -45,14 +46,17 @@ export = async (app: Probot) => {
       });
 
       app.on("installation.created", async (context: Context) => {
-        handleAppInstallOnAccountEvent(
+        await handleAppInstallOnAccountEvent(
           context,
           Container.get(IPullServiceToken)
         );
       });
 
       app.on("installation_repositories.added", async (context: Context) => {
-        handleAppInstallOnRepoEvent(context, Container.get(IPullServiceToken));
+        await handleAppInstallOnRepoEvent(
+          context,
+          Container.get(IPullServiceToken)
+        );
       });
     })
     .catch((err) => {

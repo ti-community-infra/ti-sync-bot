@@ -75,9 +75,9 @@ export async function handleAppInstallOnRepoEvent(
     }
   );
 
-  repoConfigs.forEach((repoConfig) => {
-    handleSyncRepo(repoConfig, context.octokit, pullService).then(null);
-  });
+  for (const repoConfig of repoConfigs) {
+    await handleSyncRepo(repoConfig, context.octokit, pullService);
+  }
 }
 
 /**
@@ -135,14 +135,14 @@ export async function getSyncRepositoryListFromInstallation(
     const res = await github.apps.listReposAccessibleToInstallation();
     const repositories = res.data.repositories;
 
-    for (let repository of repositories) {
+    repositories.forEach((repository) => {
       if (!repository.private && !repository.disabled && !repository.archived) {
         syncRepos.push({
           owner: repository.owner.login,
           repo: repository.name,
         });
       }
-    }
+    });
   }
 
   return syncRepos;
@@ -158,7 +158,7 @@ function getSyncRepositoryListFromEnv(): RepoConfig[] {
   const fullNames = s === undefined ? [] : s.trim().split(",");
   const syncRepos: RepoConfig[] = [];
 
-  for (let fullName of fullNames) {
+  fullNames.forEach((fullName) => {
     let arr = fullName.split("/");
 
     if (arr.length === 2) {
@@ -167,7 +167,7 @@ function getSyncRepositoryListFromEnv(): RepoConfig[] {
         repo: arr[1].trim(),
       });
     }
-  }
+  });
 
   return syncRepos;
 }

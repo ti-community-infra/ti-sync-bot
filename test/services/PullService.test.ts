@@ -1,17 +1,16 @@
 import nock from "nock";
 import { Repository } from "typeorm";
+import typeorm = require("typeorm");
 import { getLog } from "probot/lib/helpers/get-log";
-
-const typeorm = require("typeorm");
 
 import { IPullService, PullService } from "../../src/services/PullService";
 import { Pull } from "../../src/db/entities/Pull";
-import { SyncPullQuery } from "../../src/queries/SyncPullQuery";
 
 describe("Test for PullService", () => {
+  const logger = getLog();
+  const pullRepository = new Repository<Pull>();
+
   let pullService: IPullService;
-  let logger = getLog();
-  let pullRepository = new Repository<Pull>();
 
   beforeAll(() => {
     pullService = new PullService(pullRepository, logger);
@@ -23,190 +22,197 @@ describe("Test for PullService", () => {
   });
 
   describe("Test for syncPullRequest", () => {
-    // Data in the database, if there are pr records in the database.
-    const recordId = 1;
-    const recordUpdatedAt = "2016-01-01 00:00:00.000Z";
+    let findOneMock: jest.SpyInstance<Promise<Pull | undefined>>;
+    let saveMock: jest.SpyInstance<Promise<typeorm.DeepPartial<Pull> & Pull>>;
 
-    const testcases: {
-      name: string;
-      syncPullQuery: SyncPullQuery;
-      dbExistedRecord: boolean;
-      // Whether to expect the save method of the repository to be called.
-      expectSaveCalled: boolean;
-      // Expected final saved data.
-      expectSavedId?: number;
-      expectSavedStatus?: string;
-      expectSavedLabel?: string;
-    }[] = [
-      {
-        name: "no related PR records in the database",
-        syncPullQuery: {
-          owner: "pingcap",
-          repo: "tidb",
-          pull: {
-            number: 2,
-            state: "closed",
-            title: "First PR",
-            body: "",
-            labels: [],
-            locked: false,
-            author_association: "MEMBER",
-            merge_commit_sha: "09c800a71c05093a6501efdbbac52ace9c07e0ea",
-            user: {
-              id: 1,
-              login: "c4pt0r",
-              type: "user",
-            },
-            created_at: "2015-09-06 12:14:59.000Z",
-            updated_at: "2015-09-07 12:14:59.000Z",
-            closed_at: "2015-09-07 12:14:59.000Z",
-            merged_at: "2015-09-07 12:14:59.000Z",
+    beforeAll(() => {
+      findOneMock = jest.spyOn(pullRepository, "findOne");
+      saveMock = jest.spyOn(pullRepository, "save");
+    });
+
+    test("no PR record in the database", async () => {
+      const syncPullQuery = {
+        owner: "pingcap",
+        repo: "tidb",
+        pull: {
+          number: 1,
+          state: "closed",
+          title: "First PR",
+          body: "",
+          labels: [],
+          author_association: "MEMBER",
+          user: {
+            login: "c4pt0r",
           },
+          created_at: "2015-09-06 12:14:59.000Z",
+          updated_at: "2015-09-07 12:14:59.000Z",
+          closed_at: "2015-09-07 12:14:59.000Z",
+          merged_at: "2015-09-07 12:14:59.000Z",
         },
-        dbExistedRecord: false,
-        expectSaveCalled: true,
-        expectSavedId: undefined,
-        expectSavedStatus: "merged",
-        expectSavedLabel: "",
-      },
-      {
-        name:
-          "related PR stored in database, but the received PR data is out of date",
-        syncPullQuery: {
-          owner: "pingcap",
-          repo: "tidb",
-          pull: {
-            number: 2,
-            state: "closed",
-            title: "First PR",
-            body: "",
-            labels: [],
-            locked: false,
-            author_association: "MEMBER",
-            merge_commit_sha: "09c800a71c05093a6501efdbbac52ace9c07e0ea",
-            user: {
-              id: 1,
-              login: "c4pt0r",
-              type: "user",
-            },
-            created_at: "2015-09-06 12:14:59.000Z",
-            // Notice: The update time of newly received data is earlier than recordUpdatedAt.
-            updated_at: "2015-09-07 12:14:59.000Z",
-            closed_at: "2015-09-07 12:14:59.000Z",
-            merged_at: "2015-09-07 12:14:59.000Z",
+      };
+
+      // Mock the repository function.
+      findOneMock.mockResolvedValue(undefined);
+      saveMock.mockImplementation();
+
+      // Execute the function to be tested.
+      await pullService.syncPullRequest(syncPullQuery);
+
+      // Assert the data that will eventually be saved in the database.
+      const pullBeSaved = saveMock.mock.calls[0][0];
+      expect(pullBeSaved.id).toBe(undefined);
+      expect(pullBeSaved.status).toBe("merged");
+    });
+
+    test("PR stored in DB but the received PR data is out of date", async () => {
+      const syncPullQuery = {
+        owner: "pingcap",
+        repo: "tidb",
+        pull: {
+          number: 1,
+          state: "closed",
+          title: "First PR",
+          body: "",
+          labels: [],
+          author_association: "MEMBER",
+          user: {
+            login: "c4pt0r",
           },
+          created_at: "2015-09-06 12:14:59.000Z",
+          // Notice: The update time of newly received data is earlier than the record in database.
+          updated_at: "2015-09-07 12:14:59.000Z",
+          closed_at: "2015-09-07 12:14:59.000Z",
+          merged_at: "2015-09-07 12:14:59.000Z",
         },
-        dbExistedRecord: true,
-        expectSaveCalled: false,
-      },
-      {
-        name:
-          "related PR records in the database and the newly received PR data is the latest",
-        syncPullQuery: {
-          owner: "pingcap",
-          repo: "tidb",
-          pull: {
-            number: 0,
-            state: "closed",
-            title: "First PR",
-            body: "",
-            labels: [],
-            locked: false,
-            author_association: "MEMBER",
-            merge_commit_sha: "09c800a71c05093a6501efdbbac52ace9c07e0ea",
-            user: {
-              id: 1,
-              login: "c4pt0r",
-              type: "user",
-            },
-            created_at: "2015-09-06 12:14:59.000Z",
-            // Notice: The update time of newly received data is later than recordUpdatedAt.
-            updated_at: "2016-09-07 12:14:59.000Z",
-            closed_at: "2015-09-07 12:14:59.000Z",
-            // Notice: there is no merge time for this test case.
-            merged_at: null,
+      };
+
+      // Mock the repository function.
+      const pullInDB = new Pull();
+      pullInDB.updatedAt = "2016-01-01 00:00:00.000Z";
+
+      findOneMock.mockResolvedValue(pullInDB);
+
+      // Execute the function to be tested.
+      await pullService.syncPullRequest(syncPullQuery);
+
+      expect(saveMock).not.toBeCalled();
+    });
+
+    test("PR stored in DB and the received PR data is the latest", async () => {
+      const syncPullQuery = {
+        owner: "pingcap",
+        repo: "tidb",
+        pull: {
+          number: 1,
+          state: "closed",
+          title: "First PR",
+          body: "",
+          labels: [],
+          author_association: "MEMBER",
+          user: {
+            login: "c4pt0r",
           },
+          created_at: "2015-09-06 12:14:59.000Z",
+          // Notice: The update time of newly received data is later than recordUpdatedAt.
+          updated_at: "2016-09-07 12:14:59.000Z",
+          closed_at: "2015-09-07 12:14:59.000Z",
+          // Notice: there is no merge time for this test case.
+          merged_at: null,
         },
-        dbExistedRecord: true,
-        expectSaveCalled: true,
-        expectSavedId: recordId,
-        expectSavedStatus: "closed",
-      },
-      {
-        name: "new pr with labels",
-        syncPullQuery: {
-          owner: "pingcap",
-          repo: "tidb",
-          pull: {
-            number: 2,
-            state: "closed",
-            title: "First PR",
-            body: "",
-            labels: [
-              { id: 1, name: "type/feature" },
-              { id: 2, name: "sig/community-infra" },
-            ],
-            locked: false,
-            author_association: "MEMBER",
-            merge_commit_sha: "09c800a71c05093a6501efdbbac52ace9c07e0ea",
-            user: {
-              id: 1,
-              login: "c4pt0r",
-              type: "user",
-            },
-            created_at: "2015-09-06 12:14:59.000Z",
-            updated_at: "2016-09-07 12:14:59.000Z",
-            closed_at: "2015-09-07 12:14:59.000Z",
-            merged_at: null,
+      };
+
+      // Mock the repository function.
+      const pullInDB = new Pull();
+      pullInDB.id = 1;
+      pullInDB.updatedAt = "2016-01-01 00:00:00.000Z";
+
+      findOneMock.mockResolvedValue(pullInDB);
+      saveMock.mockImplementation();
+
+      // Execute the function to be tested.
+      await pullService.syncPullRequest(syncPullQuery);
+
+      // Assert the data that will eventually be saved in the database.
+      const pullBeSaved = saveMock.mock.calls[0][0];
+
+      expect(saveMock).toBeCalled();
+      expect(pullBeSaved.id).toBe(1);
+      expect(pullBeSaved.status).toBe("closed");
+    });
+
+    test("new pr with labels", async () => {
+      const syncPullQuery = {
+        owner: "pingcap",
+        repo: "tidb",
+        pull: {
+          number: 1,
+          state: "closed",
+          title: "First PR",
+          body: "",
+          labels: [{ name: "type/feature" }, { name: "sig/community-infra" }],
+          author_association: "MEMBER",
+          user: {
+            login: "c4pt0r",
           },
+          created_at: "2015-09-06 12:14:59.000Z",
+          updated_at: "2016-09-07 12:14:59.000Z",
+          closed_at: "2015-09-07 12:14:59.000Z",
+          merged_at: null,
         },
-        dbExistedRecord: false,
-        expectSaveCalled: true,
-        expectSavedLabel: "type/feature,sig/community-infra",
-      },
-    ];
+      };
 
-    for (let tc of testcases) {
-      test(tc.name, async () => {
-        // Mock the find one function.
-        const findOneMock = jest.spyOn(pullRepository, "findOne");
-        const saveMock = jest.spyOn(pullRepository, "save");
+      // Mock the repository function.
+      findOneMock.mockResolvedValue(undefined);
+      saveMock.mockImplementation();
 
-        saveMock.mockImplementation();
+      // Execute the function to be tested.
+      await pullService.syncPullRequest(syncPullQuery);
 
-        if (tc.dbExistedRecord) {
-          const pullInDB = new Pull();
-          pullInDB.id = recordId;
-          pullInDB.updatedAt = recordUpdatedAt;
-          findOneMock.mockResolvedValue(pullInDB);
-        } else {
-          findOneMock.mockResolvedValue(undefined);
-        }
+      // Assert the data that will eventually be saved in the database.
+      const pullBeSaved = saveMock.mock.calls[0][0];
 
-        // Execute the function to be tested.
-        await pullService.syncPullRequest(tc.syncPullQuery);
+      expect(pullBeSaved.label).toBe("type/feature,sig/community-infra");
+    });
 
-        if (tc.expectSaveCalled) {
-          // Assert the data that will eventually be saved in the database.
-          const pullStored = saveMock.mock.calls[0][0];
+    test("PR author is org member", async () => {
+      const syncPullQuery = {
+        owner: "pingcap",
+        repo: "tidb",
+        pull: {
+          number: 1,
+          state: "open",
+          title: "First PR",
+          body: "",
+          labels: [],
+          author_association: "MEMBER",
+          user: {
+            login: "c4pt0r",
+          },
+          created_at: "2015-09-06 12:14:59.000Z",
+          updated_at: "2016-09-07 12:14:59.000Z",
+          closed_at: null,
+          merged_at: null,
+        },
+      };
 
-          expect(pullStored.id).toBe(tc.expectSavedId);
+      // Mock the repository function.
+      findOneMock.mockResolvedValue(undefined);
+      saveMock.mockImplementation();
 
-          if (tc.expectSavedStatus !== undefined) {
-            expect(pullStored.status).toBe(tc.expectSavedStatus);
-          }
-          if (tc.expectSavedLabel !== undefined) {
-            expect(pullStored.label).toBe(tc.expectSavedLabel);
-          }
-        } else {
-          expect(saveMock).not.toBeCalled();
-        }
+      // Execute the function to be tested.
+      await pullService.syncPullRequest(syncPullQuery);
 
-        // Clear the function call record.
-        saveMock.mockClear();
-        findOneMock.mockClear();
-      });
-    }
+      // Assert the data that will eventually be saved in the database.
+      const pullBeSaved = saveMock.mock.calls[0][0];
+
+      expect(pullBeSaved.association).toBe("MEMBER");
+      expect(pullBeSaved.relation).toBe("member");
+    });
+
+    afterEach(() => {
+      findOneMock.mockClear();
+      saveMock.mockClear();
+    });
   });
 
   afterEach(() => {
