@@ -1,5 +1,5 @@
 import rewire from "rewire";
-import { RepoConfig } from "../../../lib/config/config";
+import { RepoConfig } from "../../../src/events/app";
 const appEventHandler = rewire("../../../lib/events/app/index.js");
 
 describe("Test for app event handle", () => {

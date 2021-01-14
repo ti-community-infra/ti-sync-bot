@@ -2,7 +2,7 @@ import { Context, Probot, ProbotOctokit } from "probot";
 import { IPullService } from "../../services/PullService";
 import { sleep } from "../../utils/util";
 
-interface RepoConfig {
+export interface RepoConfig {
   owner: string;
   repo: string;
 }

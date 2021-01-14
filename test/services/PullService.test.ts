@@ -22,8 +22,8 @@ describe("Test for PullService", () => {
   });
 
   describe("Test for syncPullRequest", () => {
-    let findOneMock: jest.SpyInstance<Promise<Pull | undefined>>;
-    let saveMock: jest.SpyInstance<Promise<typeorm.DeepPartial<Pull> & Pull>>;
+    let findOneMock: jest.SpyInstance;
+    let saveMock: jest.SpyInstance;
 
     beforeAll(() => {
       findOneMock = jest.spyOn(pullRepository, "findOne");
