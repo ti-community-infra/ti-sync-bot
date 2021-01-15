@@ -8,12 +8,16 @@ import { timeALaterThanTimeB } from "../utils/util";
 import { encodeLabelArray } from "../utils/parser";
 
 import { Pull } from "../db/entities/Pull";
-import { SyncPullQuery } from "../queries/SyncPullQuery";
+import { SyncPullQuery } from "../queries/pull/SyncPullQuery";
+import { SyncPullLabelsQuery } from "../queries/pull/SyncPullLabelsQuery";
+import { SyncPullStatusQuery } from "../queries/pull/SyncPullStatusQuery";
 
 export const IPullServiceToken = new Token<IPullService>();
 
 export interface IPullService {
   syncPullRequest(syncPullQuery: SyncPullQuery): Promise<void>;
+  syncPullRequestStatus(query: SyncPullStatusQuery): Promise<void>;
+  syncPullRequestLabels(query: SyncPullLabelsQuery): Promise<void>;
 }
 
 @Service(IPullServiceToken)
@@ -25,8 +29,10 @@ export class PullService implements IPullService {
     private log: Logger
   ) {}
 
+  // TODO: refactor the sync pull request function.
   async syncPullRequest(syncPullQuery: SyncPullQuery) {
-    let { owner, repo, pull } = syncPullQuery;
+    const { owner, repo, pull } = syncPullQuery;
+    const pullSignature = `${owner}/${repo}#${pull.number}`;
 
     // Get existing records from the database for comparison.
     let pullInDB = await this.pullRepository.findOne({
@@ -41,6 +47,7 @@ export class PullService implements IPullService {
       pullInDB = PullService.makePull(owner, repo, pull.number);
     }
 
+    // TODO: use time.laterThan instead of timeALaterThanTimeB.
     // Ignore outdated PR data.
     const isPRUpdated = timeALaterThanTimeB(
       pull.updated_at,
@@ -48,9 +55,7 @@ export class PullService implements IPullService {
     );
 
     if (!isPRUpdated) {
-      this.log.info(
-        `sync pull request ${owner}/${repo}#${pull.number}, but not updated`
-      );
+      this.log.info(`sync pull request ${pullSignature}, but not updated`);
       return;
     }
 
@@ -79,16 +84,17 @@ export class PullService implements IPullService {
 
     try {
       await this.pullRepository.save(pullInDB);
-      this.log.info(`sync pull request ${owner}/${repo}#${pull.number}`);
+      this.log.info(`sync pull request ${pullSignature}`);
     } catch (err) {
-      this.log.error(
-        `failed to sync pull request ${owner}/${repo}#${pull.number}: ${err}`,
-        err
-      );
+      this.log.error(`failed to sync pull request ${pullSignature}: ${err}`);
     }
   }
 
   async syncPullRequestStatus() {}
+
+  async syncPullRequestLabels(query: SyncPullLabelsQuery) {
+    console.log(query);
+  }
 
   private static makePull(owner: string, repo: string, number: number): Pull {
     const pull = new Pull();

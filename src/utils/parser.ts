@@ -1,3 +1,10 @@
+type label =
+  | string
+  | {
+      id?: number;
+      name?: string;
+    };
+
 /**
  * Convert the comma string to array.
  * @param str Label string separated by commas, e.g. "type/feature,status/can-merge".
@@ -9,18 +16,17 @@ export function decodeLabelString(str: string): string[] {
 
 /**
  * Convert an array to a string that separates array items by commas.
- * @param arr A label string array, e.g. ["type/feature", "status/can-merge"].
+ * @param labelArr
  * @return Label string, e.g. "type/feature,status/can-merge".
  */
-export function encodeLabelArray(
-  arr: {
-    id?: number;
-    name?: string;
-  }[]
-): string {
-  return arr
+export function encodeLabelArray(labelArr: label[]): string {
+  return labelArr
     .map((label) => {
-      return label.name?.trim();
+      if (typeof label === "string") {
+        return label;
+      } else {
+        return label.name?.trim();
+      }
     })
     .join(",");
 }

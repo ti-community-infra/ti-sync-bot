@@ -133,9 +133,10 @@ describe("Test for PullService", () => {
       await pullService.syncPullRequest(syncPullQuery);
 
       // Assert the data that will eventually be saved in the database.
+      expect(saveMock).toBeCalled();
+
       const pullBeSaved = saveMock.mock.calls[0][0];
 
-      expect(saveMock).toBeCalled();
       expect(pullBeSaved.id).toBe(1);
       expect(pullBeSaved.status).toBe("closed");
     });
