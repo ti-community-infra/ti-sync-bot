@@ -8,9 +8,9 @@ import { timeALaterThanTimeB } from "../utils/util";
 import { encodeLabelArray } from "../utils/parser";
 
 import { Pull } from "../db/entities/Pull";
-import { SyncPullQuery } from "../queries/SyncPullQuery";
-import { SyncPullLabelsQuery } from "../queries/SyncPullLabelsQuery";
-import { SyncPullStatusQuery } from "../queries/SyncPullStatusQuery";
+import { SyncPullQuery } from "../queries/pull/SyncPullQuery";
+import { SyncPullLabelsQuery } from "../queries/pull/SyncPullLabelsQuery";
+import { SyncPullStatusQuery } from "../queries/pull/SyncPullStatusQuery";
 
 export const IPullServiceToken = new Token<IPullService>();
 

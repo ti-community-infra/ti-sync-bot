@@ -8,10 +8,10 @@ import {
   ICommentService,
 } from "../../src/services/CommentService";
 import { Comment } from "../../src/db/entities/Comment";
-import { SyncPullReviewsQuery } from "../../src/queries/SyncPullReviewsQuery";
+import { SyncPullReviewsQuery } from "../../src/queries/comment/SyncPullReviewsQuery";
 import { flushPromises } from "../../src/utils/test";
-import { SyncPullCommentsQuery } from "../../src/queries/SyncPullCommentsQuery";
-import { SyncPullReviewCommentsQuery } from "../../src/queries/SyncPullReviewCommentsQuery";
+import { SyncPullCommentsQuery } from "../../src/queries/comment/SyncPullCommentsQuery";
+import { SyncPullReviewCommentsQuery } from "../../src/queries/comment/SyncPullReviewCommentsQuery";
 
 describe("Test for CommentService", () => {
   const logger = getLog();

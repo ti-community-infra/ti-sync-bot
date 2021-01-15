@@ -7,10 +7,13 @@ import { time } from "../utils/time";
 import { ILoggerToken } from "../common/token";
 
 import { Comment, CommentType } from "../db/entities/Comment";
-import { SyncPullReviewsQuery } from "../queries/SyncPullReviewsQuery";
-import { SyncPullReviewCommentsQuery } from "../queries/SyncPullReviewCommentsQuery";
-import { SyncPullCommentsQuery } from "../queries/SyncPullCommentsQuery";
-import { SyncCommentQuery } from "../queries/SyncCommentQuery";
+import { SyncPullReviewsQuery } from "../queries/comment/SyncPullReviewsQuery";
+import { SyncPullReviewCommentsQuery } from "../queries/comment/SyncPullReviewCommentsQuery";
+import { SyncPullCommentsQuery } from "../queries/comment/SyncPullCommentsQuery";
+import { SyncCommentQuery } from "../queries/comment/SyncCommentQuery";
+import { SyncPullReviewQuery } from "../queries/comment/SyncPullReviewQuery";
+import { SyncPullCommentQuery } from "../queries/comment/SyncPullCommentQuery";
+import { SyncPullReviewCommentQuery } from "../queries/comment/SyncPullReviewCommentQuery";
 
 export const ICommentServiceToken = new Token<ICommentService>();
 
@@ -32,49 +35,79 @@ export class CommentService implements ICommentService {
   ) {}
 
   // TODO: Batch sync PR comments.
+  /**
+   * Handle reviews of a pull request.
+   * @param query
+   */
   async syncPullRequestReviews(query: SyncPullReviewsQuery) {
     const { pull, reviews } = query;
 
     reviews.forEach((review) => {
-      let commentReceived: SyncCommentQuery = {
-        comment_type: CommentType.REVIEW,
-        created_at: review.submitted_at || "",
-        updated_at: review.submitted_at || "",
+      this.syncPullRequestReview({
         ...pull,
         ...review,
-      };
-
-      this.syncComment(commentReceived);
+      });
     });
   }
 
+  async syncPullRequestReview(query: SyncPullReviewQuery) {
+    let commentReceived: SyncCommentQuery = {
+      ...query,
+      comment_type: CommentType.REVIEW,
+      created_at: query.submitted_at || "",
+      updated_at: query.submitted_at || "",
+    };
+
+    this.syncComment(commentReceived).then(null);
+  }
+
+  /**
+   * Handle review comments of a pull request.
+   * @param query
+   */
   async syncPullRequestReviewComments(query: SyncPullReviewCommentsQuery) {
     const { pull, review_comments: reviewComments } = query;
 
     reviewComments.forEach((reviewComment) => {
-      let commentReceived: SyncCommentQuery = {
-        comment_type: CommentType.REVIEW_COMMENT,
+      this.syncPullRequestReviewComment({
         ...pull,
         ...reviewComment,
-      };
-
-      this.syncComment(commentReceived);
+      });
     });
   }
 
+  async syncPullRequestReviewComment(query: SyncPullReviewCommentQuery) {
+    let commentReceived: SyncCommentQuery = {
+      ...query,
+      comment_type: CommentType.REVIEW_COMMENT,
+    };
+
+    await this.syncComment(commentReceived);
+  }
+
+  /**
+   * Handle common comments of a pull request.
+   * @param query
+   */
   async syncPullRequestComments(query: SyncPullCommentsQuery) {
     const { pull, comments } = query;
 
     comments.forEach((comment) => {
-      let commentReceived: SyncCommentQuery = {
-        comment_type: CommentType.COMMON_COMMENT,
-        body: comment.body || "",
+      this.syncPullRequestComment({
         ...pull,
         ...comment,
-      };
-
-      this.syncComment(commentReceived).then(null);
+      });
     });
+  }
+
+  async syncPullRequestComment(query: SyncPullCommentQuery) {
+    let commentReceived: SyncCommentQuery = {
+      ...query,
+      comment_type: CommentType.COMMON_COMMENT,
+      body: query.body || "",
+    };
+
+    await this.syncComment(commentReceived);
   }
 
   /**
@@ -153,14 +186,15 @@ export class CommentService implements ICommentService {
     commentStored: Comment,
     commentReceived: SyncCommentQuery
   ): Comment {
-    const newComment = Object.assign({}, commentStored);
-
-    newComment.repo = commentReceived.repo;
-    newComment.owner = commentReceived.owner;
-    newComment.body = commentReceived.body;
-    newComment.updatedAt = commentReceived.updated_at;
-    newComment.association = commentReceived.author_association;
-    newComment.url = commentReceived.html_url;
+    const newComment: Comment = {
+      ...commentStored,
+      repo: commentReceived.repo,
+      owner: commentReceived.owner,
+      body: commentReceived.body,
+      updatedAt: commentReceived.updated_at,
+      association: commentReceived.author_association,
+      url: commentReceived.html_url,
+    };
 
     if (commentReceived.author_association === "MEMBER") {
       newComment.relation = "member";

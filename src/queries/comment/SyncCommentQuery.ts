@@ -1,4 +1,4 @@
-import { CommentType } from "../db/entities/Comment";
+import { CommentType } from "../../db/entities/Comment";
 
 export interface SyncCommentQuery {
   owner: string;
