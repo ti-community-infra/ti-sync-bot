@@ -7,7 +7,7 @@ module.exports ={
     database: process.env.BOT_DB_NAME,
     // To support emoji character.
     charset: 'UTF8MB4_GENERAL_CI',
-    // Unified use of GMT.
+    // Unified use GMT.
     timezone: 'Z',
     logging: false,
     entities: [

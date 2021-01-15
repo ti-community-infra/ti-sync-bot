@@ -126,7 +126,7 @@ async function handleSyncRepo(
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
 
-  // Load Pull Requests in pagination mode.
+  // Load pull requests in pagination mode.
   const pullIterator = github.paginate.iterator(github.pulls.list, {
     ...repoKey,
     state: "all",
@@ -136,7 +136,7 @@ async function handleSyncRepo(
 
   github.log.info(`syncing pull request from ${repoSignature}`);
 
-  // Handle Pull Requests in pagination mode.
+  // Handle pull requests in pagination mode.
   for await (const res of pullIterator) {
     // Process a page of data.
     for (const pull of res.data) {
@@ -179,6 +179,7 @@ async function handleSyncRepo(
       });
     }
 
+    // In order to avoid frequent access to the API.
     await sleep(1000);
   }
 }
