@@ -52,12 +52,12 @@ export async function handleAppInstallOnAccountEvent(
   );
 
   for (const repoConfig of repoConfigs) {
-    handleSyncRepo(
+    await handleSyncRepo(
       repoConfig,
       context.octokit,
       pullService,
       commentService
-    ).then(null);
+    );
   }
 }
 
@@ -136,6 +136,8 @@ async function handleSyncRepo(
       // TODO: Sync Contributor Email.
     }
 
+    // TODO: Optimize the sleep time.
+    // In order to avoid frequent access to the API.
     await sleep(1000);
   }
 }
