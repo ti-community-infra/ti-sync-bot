@@ -1,4 +1,3 @@
-import nock from "nock";
 import { Repository } from "typeorm";
 import typeorm = require("typeorm");
 import { getLog } from "probot/lib/helpers/get-log";
@@ -17,7 +16,6 @@ describe("Test for PullService", () => {
   });
 
   beforeEach(() => {
-    nock.disableNetConnect();
     typeorm.createConnection = jest.fn().mockResolvedValue(null);
   });
 
@@ -214,10 +212,5 @@ describe("Test for PullService", () => {
       findOneMock.mockClear();
       saveMock.mockClear();
     });
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
-    nock.enableNetConnect();
   });
 });

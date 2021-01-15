@@ -11,6 +11,7 @@ import {
   handleAppInstallOnRepoEvent,
   handleAppStartUpEvent,
 } from "./events/app";
+import { IIssueServiceToken } from "./services/IssueService";
 
 export = async (app: Probot) => {
   // Init container.
@@ -38,7 +39,8 @@ export = async (app: Probot) => {
         app,
         github,
         Container.get(IPullServiceToken),
-        Container.get(ICommentServiceToken)
+        Container.get(ICommentServiceToken),
+        Container.get(IIssueServiceToken)
       ).then(null);
 
       // Establish WebHook listen.
@@ -53,7 +55,8 @@ export = async (app: Probot) => {
         await handleAppInstallOnAccountEvent(
           context,
           Container.get(IPullServiceToken),
-          Container.get(ICommentServiceToken)
+          Container.get(ICommentServiceToken),
+          Container.get(IIssueServiceToken)
         );
       });
 
@@ -61,7 +64,8 @@ export = async (app: Probot) => {
         await handleAppInstallOnRepoEvent(
           context,
           Container.get(IPullServiceToken),
-          Container.get(ICommentServiceToken)
+          Container.get(ICommentServiceToken),
+          Container.get(IIssueServiceToken)
         );
       });
     })
