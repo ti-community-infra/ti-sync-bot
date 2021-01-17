@@ -6,15 +6,11 @@ export type RepoKey = {
   repo: string;
 };
 
-export type IssueKey = {
-  owner: string;
-  repo: string;
+export type IssueKey = RepoKey & {
   issue_number: number;
 };
 
-export type PullKey = {
-  owner: string;
-  repo: string;
+export type PullKey = RepoKey & {
   pull_number: number;
 };
 

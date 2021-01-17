@@ -3,6 +3,7 @@ import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
 import { sleep } from "../../utils/util";
 import { IPullService } from "../../services/PullService";
 import { ICommentService } from "../../services/CommentService";
+import { IIssueService } from "../../services/IssueService";
 
 /**
  * Handle the event that triggered when the program start up.
@@ -10,12 +11,14 @@ import { ICommentService } from "../../services/CommentService";
  * @param github
  * @param pullService
  * @param commentService
+ * @param issueService
  */
 export async function handleAppStartUpEvent(
   app: Probot,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
-  commentService: ICommentService
+  commentService: ICommentService,
+  issueService: IIssueService
 ) {
   let repoConfigs: RepoKey[];
 
@@ -26,7 +29,13 @@ export async function handleAppStartUpEvent(
   }
 
   for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(repoConfig, github, pullService, commentService);
+    await handleSyncRepo(
+      repoConfig,
+      github,
+      pullService,
+      commentService,
+      issueService
+    );
   }
 }
 
@@ -35,11 +44,13 @@ export async function handleAppStartUpEvent(
  * @param context
  * @param pullService
  * @param commentService
+ * @param issueService
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context,
   pullService: IPullService,
-  commentService: ICommentService
+  commentService: ICommentService,
+  issueService: IIssueService
 ) {
   const { installation, repositories } = context.payload;
   const repoConfigs: RepoKey[] = repositories.map(
@@ -56,7 +67,8 @@ export async function handleAppInstallOnAccountEvent(
       repoConfig,
       context.octokit,
       pullService,
-      commentService
+      commentService,
+      issueService
     );
   }
 }
@@ -67,11 +79,13 @@ export async function handleAppInstallOnAccountEvent(
  * @param context
  * @param pullService
  * @param commentService
+ * @param issueService
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context,
   pullService: IPullService,
-  commentService: ICommentService
+  commentService: ICommentService,
+  issueService: IIssueService
 ) {
   const { installation, repositories_added } = context.payload;
   const repoConfigs: RepoKey[] = repositories_added.map(
@@ -88,7 +102,8 @@ export async function handleAppInstallOnRepoEvent(
       repoConfig,
       context.octokit,
       pullService,
-      commentService
+      commentService,
+      issueService
     );
   }
 }
@@ -99,26 +114,30 @@ export async function handleAppInstallOnRepoEvent(
  * @param github
  * @param pullService
  * @param commentService
+ * @param issueService
  */
 async function handleSyncRepo(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
-  commentService: ICommentService
+  commentService: ICommentService,
+  issueService: IIssueService
 ) {
   const { owner, repo } = repoKey;
+  const repoSignature = `${owner}/${repo}`;
 
-  // Load Pull Request in pagination mode.
-  const iterator = github.paginate.iterator(github.pulls.list, {
+  // Load pull requests in pagination mode.
+  const pullIterator = github.paginate.iterator(github.pulls.list, {
     ...repoKey,
     state: "all",
     per_page: 100,
     direction: "asc",
   });
 
-  github.log.info(`syncing pull request from ${owner}/${repo}`);
+  github.log.info(`syncing pull request from ${repoSignature}`);
 
-  for await (const res of iterator) {
+  // Handle pull requests in pagination mode.
+  for await (const res of pullIterator) {
     // Process a page of data.
     for (const pull of res.data) {
       const pullKey = {
@@ -137,6 +156,29 @@ async function handleSyncRepo(
     }
 
     // TODO: Optimize the sleep time.
+    // In order to avoid frequent access to the API.
+    await sleep(1000);
+  }
+
+  // Load issues in pagination mode.
+  const issueIterator = github.paginate.iterator(github.issues.listForRepo, {
+    ...repoKey,
+    state: "all",
+    per_page: 100,
+    direction: "asc",
+  });
+
+  github.log.info(`syncing issue from ${repoSignature}`);
+
+  // Handle issues in pagination mode.
+  for await (const res of issueIterator) {
+    for (let issue of res.data) {
+      await issueService.syncIssue({
+        ...repoKey,
+        ...issue,
+      });
+    }
+
     // In order to avoid frequent access to the API.
     await sleep(1000);
   }

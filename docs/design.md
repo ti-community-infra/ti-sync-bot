@@ -32,22 +32,32 @@ SYNC_REPOS=tikv/tikv,pingcap/tipocket
 
 | 字段名称         | 字段说明     |
 | --------------- | ----------- |
+| status          | PR 的状态可以分为 `open`、`closed` 和 `merged` 三种状态，Github 只提供了 `open` 和 `closed` 两种状态，如果 PR 的 `merged_at` 不为空，则可以判定为 `merged` 状态。 |
 | label           | 使用逗号分隔多个标签名。 |
-| relation        | 描述的是 PR 作者与公司的关系，其类型包括："member" / "not member"。 |
-| association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括："COLLABORATOR" / "FIRST_TIME_CONTRIBUTOR" / "CONTRIBUTOR" / "MEMBER" / "NONE"。 |
+| relation        | 描述的是 PR 作者与公司的关系，其类型包括：`member`、`not member`。 |
+| association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括：`COLLABORATOR`、`FIRST_TIME_CONTRIBUTOR`、`CONTRIBUTOR`、`MEMBER`、`NONE`。 |
 
 ### 同步 Comment
 
-目前，ti-sync-bot 会对 common comment、review 和 review comment 三种类型的评论进行同步。
+目前，ti-sync-bot 会对 `common comment`、`review` 和 `review comment` 三种类型的评论进行同步。
 
-common comment 指的是 pull request 与 issue 共用的一种 comment 类型，可以通过 [issues.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/issues#list-issue-comments) 接口获取 PR 的 comment 列表。
+`common comment` 指的是 Pull Request 与 Issue 共用的一种评论类型，可以通过 [issues.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/issues#list-issue-comments) 接口获取 PR 的 comment 列表。
 
-review 指的是 reviewer 在提交 review 时填写的评论内容，可以通过 [pulls.listReviews](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-reviews-for-a-pull-request) 接口获取获取 PR 的 review 列表。
+`review` 指的是 reviewer 在提交 review 时填写的评论内容，可以通过 [pulls.listReviews](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-reviews-for-a-pull-request) 接口获取 PR 的 review 列表。
 
-review comment 指的是在 review 过程中针对指定代码添加的评论内容，可以通过 [pulls.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-review-comment-for-a-pull-request) 接口 review comment 列表。
+`review comment` 指的是在 review 过程中针对指定代码添加的评论内容，可以通过 [pulls.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-review-comment-for-a-pull-request) 接口 review comment 列表。
 
 比较特别的是，在 review 代码的过程中如果使用了 Github 的 "Add single comment" 功能，Github 会自动地添加一条无内容的 review，然后将实际评论（review comment 类型）与之关联。
 
 | 字段名称         | 字段说明     |
 | --------------- | ----------- |
-| comment_type    | 其类型包括："common comment" / "review" / "review comment"。 |
+| comment_type    | 其类型包括：`common comment`、`review`、`review comment`。 |
+
+### 同步 Issue
+
+| 字段名称         | 字段说明     |
+| --------------- | ----------- |
+| status          | Issue 的状态可以分为 `open` 和 `closed` 两种状态。 |
+| label           | 使用逗号分隔多个标签名。 |
+| relation        | 描述的是 PR 作者与公司的关系，其类型包括：`member`、`not member`。 |
+| association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括：`COLLABORATOR`、`FIRST_TIME_CONTRIBUTOR`、`CONTRIBUTOR`、`MEMBER`、`NONE`。 |
