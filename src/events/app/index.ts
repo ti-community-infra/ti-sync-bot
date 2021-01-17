@@ -7,7 +7,6 @@ import { IIssueService } from "../../services/IssueService";
 import { sleep } from "../../utils/util";
 
 import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
-import { Pull } from "../../db/entities/Pull";
 
 /**
  * Handle the event that triggered when the program start up.
