@@ -12,6 +12,12 @@ import {
   handleAppStartUpEvent,
 } from "./events/app";
 import { IIssueServiceToken } from "./services/IssueService";
+import {
+  handlePullRequestEvent,
+  handlePullRequestReviewCommentEvent,
+  handlePullRequestReviewEvent,
+} from "./events/pullRequest";
+import { handleIssueCommentEvent, handleIssueEvent } from "./events/issue";
 
 export = async (app: Probot) => {
   // Init container.
@@ -66,6 +72,35 @@ export = async (app: Probot) => {
           Container.get(IPullServiceToken),
           Container.get(ICommentServiceToken),
           Container.get(IIssueServiceToken)
+        );
+      });
+
+      app.on("pull_request", async (context) => {
+        await handlePullRequestEvent(context, Container.get(IPullServiceToken));
+      });
+
+      app.on("pull_request_review", async (context) => {
+        await handlePullRequestReviewEvent(
+          context,
+          Container.get(ICommentServiceToken)
+        );
+      });
+
+      app.on("pull_request_review_comment", async (context) => {
+        await handlePullRequestReviewCommentEvent(
+          context,
+          Container.get(ICommentServiceToken)
+        );
+      });
+
+      app.on("issues", async (context) => {
+        await handleIssueEvent(context, Container.get(IIssueServiceToken));
+      });
+
+      app.on("issue_comment", async (context) => {
+        await handleIssueCommentEvent(
+          context,
+          Container.get(ICommentServiceToken)
         );
       });
     })

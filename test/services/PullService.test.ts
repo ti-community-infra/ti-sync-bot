@@ -32,21 +32,19 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        pull: {
-          number: 1,
-          state: "closed",
-          title: "First PR",
-          body: "",
-          labels: [],
-          author_association: "MEMBER",
-          user: {
-            login: "c4pt0r",
-          },
-          created_at: "2015-09-06 12:14:59.000Z",
-          updated_at: "2015-09-07 12:14:59.000Z",
-          closed_at: "2015-09-07 12:14:59.000Z",
-          merged_at: "2015-09-07 12:14:59.000Z",
+        number: 1,
+        state: "closed",
+        title: "First PR",
+        body: "",
+        labels: [],
+        author_association: "MEMBER",
+        user: {
+          login: "c4pt0r",
         },
+        created_at: "2015-09-06 12:14:59.000Z",
+        updated_at: "2015-09-07 12:14:59.000Z",
+        closed_at: "2015-09-07 12:14:59.000Z",
+        merged_at: "2015-09-07 12:14:59.000Z",
       };
 
       // Mock the repository function.
@@ -66,22 +64,20 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        pull: {
-          number: 1,
-          state: "closed",
-          title: "First PR",
-          body: "",
-          labels: [],
-          author_association: "MEMBER",
-          user: {
-            login: "c4pt0r",
-          },
-          created_at: "2015-09-06 12:14:59.000Z",
-          // Notice: The update time of newly received data is earlier than the record in database.
-          updated_at: "2015-09-07 12:14:59.000Z",
-          closed_at: "2015-09-07 12:14:59.000Z",
-          merged_at: "2015-09-07 12:14:59.000Z",
+        number: 1,
+        state: "closed",
+        title: "First PR",
+        body: "",
+        labels: [],
+        author_association: "MEMBER",
+        user: {
+          login: "c4pt0r",
         },
+        created_at: "2015-09-06 12:14:59.000Z",
+        // Notice: The update time of newly received data is earlier than the record in database.
+        updated_at: "2015-09-07 12:14:59.000Z",
+        closed_at: "2015-09-07 12:14:59.000Z",
+        merged_at: "2015-09-07 12:14:59.000Z",
       };
 
       // Mock the repository function.
@@ -100,23 +96,21 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        pull: {
-          number: 1,
-          state: "closed",
-          title: "First PR",
-          body: "",
-          labels: [],
-          author_association: "MEMBER",
-          user: {
-            login: "c4pt0r",
-          },
-          created_at: "2015-09-06 12:14:59.000Z",
-          // Notice: The update time of newly received data is later than recordUpdatedAt.
-          updated_at: "2016-09-07 12:14:59.000Z",
-          closed_at: "2015-09-07 12:14:59.000Z",
-          // Notice: there is no merge time for this test case.
-          merged_at: null,
+        number: 1,
+        state: "closed",
+        title: "First PR",
+        body: "",
+        labels: [],
+        author_association: "MEMBER",
+        user: {
+          login: "c4pt0r",
         },
+        created_at: "2015-09-06 12:14:59.000Z",
+        // Notice: The update time of newly received data is later than recordUpdatedAt.
+        updated_at: "2016-09-07 12:14:59.000Z",
+        closed_at: "2015-09-07 12:14:59.000Z",
+        // Notice: there is no merge time for this test case.
+        merged_at: null,
       };
 
       // Mock the repository function.
@@ -143,21 +137,19 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        pull: {
-          number: 1,
-          state: "closed",
-          title: "First PR",
-          body: "",
-          labels: [{ name: "type/feature" }, { name: "sig/community-infra" }],
-          author_association: "MEMBER",
-          user: {
-            login: "c4pt0r",
-          },
-          created_at: "2015-09-06 12:14:59.000Z",
-          updated_at: "2016-09-07 12:14:59.000Z",
-          closed_at: "2015-09-07 12:14:59.000Z",
-          merged_at: null,
+        number: 1,
+        state: "closed",
+        title: "First PR",
+        body: "",
+        labels: [{ name: "type/feature" }, { name: "sig/community-infra" }],
+        author_association: "MEMBER",
+        user: {
+          login: "c4pt0r",
         },
+        created_at: "2015-09-06 12:14:59.000Z",
+        updated_at: "2016-09-07 12:14:59.000Z",
+        closed_at: "2015-09-07 12:14:59.000Z",
+        merged_at: null,
       };
 
       // Mock the repository function.
@@ -177,21 +169,19 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        pull: {
-          number: 1,
-          state: "open",
-          title: "First PR",
-          body: "",
-          labels: [],
-          author_association: "MEMBER",
-          user: {
-            login: "c4pt0r",
-          },
-          created_at: "2015-09-06 12:14:59.000Z",
-          updated_at: "2016-09-07 12:14:59.000Z",
-          closed_at: null,
-          merged_at: null,
+        number: 1,
+        state: "open",
+        title: "First PR",
+        body: "",
+        labels: [],
+        author_association: "MEMBER",
+        user: {
+          login: "c4pt0r",
         },
+        created_at: "2015-09-06 12:14:59.000Z",
+        updated_at: "2016-09-07 12:14:59.000Z",
+        closed_at: null,
+        merged_at: null,
       };
 
       // Mock the repository function.
