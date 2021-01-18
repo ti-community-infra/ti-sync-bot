@@ -18,6 +18,7 @@ import {
   handlePullRequestReviewEvent,
 } from "./events/pullRequest";
 import { handleIssueCommentEvent, handleIssueEvent } from "./events/issue";
+import { IContributorServiceToken } from "./services/ContributorService";
 
 export = async (app: Probot) => {
   // Init container.
@@ -46,7 +47,8 @@ export = async (app: Probot) => {
         github,
         Container.get(IPullServiceToken),
         Container.get(ICommentServiceToken),
-        Container.get(IIssueServiceToken)
+        Container.get(IIssueServiceToken),
+        Container.get(IContributorServiceToken)
       ).then(null);
 
       // Establish WebHook listen.
@@ -62,7 +64,8 @@ export = async (app: Probot) => {
           context,
           Container.get(IPullServiceToken),
           Container.get(ICommentServiceToken),
-          Container.get(IIssueServiceToken)
+          Container.get(IIssueServiceToken),
+          Container.get(IContributorServiceToken)
         );
       });
 
@@ -71,7 +74,8 @@ export = async (app: Probot) => {
           context,
           Container.get(IPullServiceToken),
           Container.get(ICommentServiceToken),
-          Container.get(IIssueServiceToken)
+          Container.get(IIssueServiceToken),
+          Container.get(IContributorServiceToken)
         );
       });
 

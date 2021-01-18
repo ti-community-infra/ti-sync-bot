@@ -4,6 +4,7 @@ import { EventPayloads } from "@octokit/webhooks";
 import { IPullService } from "../../services/PullService";
 import { ICommentService } from "../../services/CommentService";
 import { IIssueService } from "../../services/IssueService";
+import { IContributorService } from "../../services/ContributorService";
 import { sleep } from "../../utils/util";
 
 import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
@@ -15,13 +16,15 @@ import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppStartUpEvent(
   app: Probot,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   let repoConfigs: RepoKey[];
 
@@ -37,7 +40,8 @@ export async function handleAppStartUpEvent(
       github,
       pullService,
       commentService,
-      issueService
+      issueService,
+      contributorService
     );
   }
 }
@@ -48,12 +52,14 @@ export async function handleAppStartUpEvent(
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context<EventPayloads.WebhookPayloadInstallation>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   const { installation, repositories } = context.payload;
   const repoConfigs: RepoKey[] = repositories.map(
@@ -71,7 +77,8 @@ export async function handleAppInstallOnAccountEvent(
       context.octokit,
       pullService,
       commentService,
-      issueService
+      issueService,
+      contributorService
     );
   }
 }
@@ -83,12 +90,14 @@ export async function handleAppInstallOnAccountEvent(
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context<EventPayloads.WebhookPayloadInstallationRepositories>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   const { installation, repositories_added } = context.payload;
   const repoConfigs: RepoKey[] = repositories_added.map(
@@ -106,7 +115,8 @@ export async function handleAppInstallOnRepoEvent(
       context.octokit,
       pullService,
       commentService,
-      issueService
+      issueService,
+      contributorService
     );
   }
 }
@@ -118,13 +128,15 @@ export async function handleAppInstallOnRepoEvent(
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 async function handleSyncRepo(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
@@ -154,8 +166,17 @@ async function handleSyncRepo(
       // Sync comment.
       await handleSyncPullComments(pullKey, github, commentService);
 
+      // Sync contributor email.
+      if (pull.user !== null) {
+        await handleSyncContributorEmail(
+          pullKey,
+          pull.user.login,
+          github,
+          contributorService
+        );
+      }
+
       // TODO: Sync Open PR Status.
-      // TODO: Sync Contributor Email.
     }
 
     // TODO: Optimize the sleep time.
@@ -220,6 +241,38 @@ async function handleSyncPullComments(
     pull: pullKey,
     comments: comments,
   });
+}
+
+/**
+ * Synchronize contributor email according to the patch of pull request.
+ * @param pullKey
+ * @param contributorLogin
+ * @param contributorService
+ * @param github
+ */
+async function handleSyncContributorEmail(
+  pullKey: PullKey,
+  contributorLogin: string,
+  github: InstanceType<typeof ProbotOctokit>,
+  contributorService: IContributorService
+) {
+  // Fetch the patch of pull request.
+  const patchResponse = await github.pulls.get({
+    ...pullKey,
+    headers: {
+      Accept: "application/vnd.github.VERSION.patch",
+    },
+  });
+
+  if (patchResponse.status === 200) {
+    // Notice: The content of the patch file type is in the form of a string.
+    const patch = (patchResponse.data as unknown) as string;
+
+    await contributorService.syncContributorEmailFromPR({
+      contributor_login: contributorLogin,
+      pull_request_patch: patch,
+    });
+  }
 }
 
 /**

@@ -78,6 +78,7 @@ export class PullService implements IPullService {
    * @param login Github login of contributor.
    */
   async getContributorAllPullRequests(login: string) {
+    // TODO: Ensure that all pull requests from contributors can be obtained.
     return await this.pullRepository.find({
       user: login,
     });
