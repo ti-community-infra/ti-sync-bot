@@ -19,9 +19,14 @@ export const ICommentServiceToken = new Token<ICommentService>();
 
 export interface ICommentService {
   syncPullRequestReviews(query: SyncPullReviewsQuery): Promise<void>;
+  syncPullRequestReview(query: SyncPullReviewQuery): Promise<void>;
   syncPullRequestComments(query: SyncPullCommentsQuery): Promise<void>;
+  syncPullRequestComment(query: SyncPullCommentQuery): Promise<void>;
   syncPullRequestReviewComments(
     query: SyncPullReviewCommentsQuery
+  ): Promise<void>;
+  syncPullRequestReviewComment(
+    query: SyncPullReviewCommentQuery
   ): Promise<void>;
 }
 
@@ -54,11 +59,12 @@ export class CommentService implements ICommentService {
     let commentReceived: SyncCommentQuery = {
       ...query,
       comment_type: CommentType.REVIEW,
+      body: query.body || "",
       created_at: query.submitted_at || "",
       updated_at: query.submitted_at || "",
     };
 
-    this.syncComment(commentReceived).then(null);
+    await this.syncComment(commentReceived);
   }
 
   /**

@@ -5,10 +5,11 @@ import { Logger } from "probot";
 
 import { time } from "../utils/time";
 import { ILoggerToken } from "../common/token";
+import { encodeLabelArray } from "../utils/parser";
 
 import { Issue } from "../db/entities/Issue";
 import { SyncIssueQuery } from "../queries/issue/SyncIssueQuery";
-import { encodeLabelArray } from "../utils/parser";
+import { IssueKey } from "../common/types";
 
 export const IIssueServiceToken = new Token<IIssueService>();
 
@@ -34,7 +35,11 @@ export class IssueService implements IIssueService {
     const issueSignature = `${owner}/${repo}#${issueNumber}`;
 
     // Get issues from the database.
-    let issueStored = await this.getIssueByIssueNumber(issueNumber);
+    let issueStored = await this.getIssueByIssueKey({
+      owner: owner,
+      repo: repo,
+      issue_number: issueNumber,
+    });
     if (issueStored === undefined) {
       issueStored = IssueService.makeIssue(issueReceived);
     }
@@ -58,15 +63,15 @@ export class IssueService implements IIssueService {
   }
 
   /**
-   * Get issues from the database based on the issue number.
-   * @param issueNumber
+   * Get issue from the database based on the issue number.
+   * @param issueKey
    */
-  private getIssueByIssueNumber(
-    issueNumber: number
-  ): Promise<Issue | undefined> {
+  private getIssueByIssueKey(issueKey: IssueKey): Promise<Issue | undefined> {
     return this.issueRepository.findOne({
       where: {
-        issueNumber: issueNumber,
+        owner: issueKey.owner,
+        repo: issueKey.repo,
+        issueNumber: issueKey.issue_number,
       },
     });
   }

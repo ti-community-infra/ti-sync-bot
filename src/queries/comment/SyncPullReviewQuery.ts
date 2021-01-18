@@ -6,7 +6,7 @@ export interface SyncPullReviewQuery {
   user: {
     login: string;
   } | null;
-  body: string;
+  body: string | null;
   html_url: string;
   submitted_at?: string;
   author_association: string;

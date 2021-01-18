@@ -1,9 +1,12 @@
 import { Context, Probot, ProbotOctokit } from "probot";
-import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
-import { sleep } from "../../utils/util";
+import { EventPayloads } from "@octokit/webhooks";
+
 import { IPullService } from "../../services/PullService";
 import { ICommentService } from "../../services/CommentService";
 import { IIssueService } from "../../services/IssueService";
+import { sleep } from "../../utils/util";
+
+import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
 
 /**
  * Handle the event that triggered when the program start up.
@@ -47,7 +50,7 @@ export async function handleAppStartUpEvent(
  * @param issueService
  */
 export async function handleAppInstallOnAccountEvent(
-  context: Context,
+  context: Context<EventPayloads.WebhookPayloadInstallation>,
   pullService: IPullService,
   commentService: ICommentService,
   issueService: IIssueService
@@ -82,7 +85,7 @@ export async function handleAppInstallOnAccountEvent(
  * @param issueService
  */
 export async function handleAppInstallOnRepoEvent(
-  context: Context,
+  context: Context<EventPayloads.WebhookPayloadInstallationRepositories>,
   pullService: IPullService,
   commentService: ICommentService,
   issueService: IIssueService
@@ -146,7 +149,7 @@ async function handleSyncRepo(
       };
 
       // Sync pull request.
-      await pullService.syncPullRequest({ ...repoKey, pull });
+      await pullService.syncPullRequest({ ...repoKey, ...pull });
 
       // Sync comment.
       await handleSyncPullComments(pullKey, github, commentService);
@@ -173,10 +176,13 @@ async function handleSyncRepo(
   // Handle issues in pagination mode.
   for await (const res of issueIterator) {
     for (let issue of res.data) {
+      // Sync issue.
       await issueService.syncIssue({
         ...repoKey,
         ...issue,
       });
+
+      // TODO: Sync issue comment.
     }
 
     // In order to avoid frequent access to the API.

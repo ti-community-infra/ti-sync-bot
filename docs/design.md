@@ -26,6 +26,16 @@ SYNC_REPOS=tikv/tikv,pingcap/tipocket
 
 增量同步是基于 Github 的 WebHook 机制实现的，为了能够在 bot 启动过程中及时处理 WebHook 发送过来的数据，全量同步和增量同步被设计成并发进行。
 
+ti-sync-bot 通过监听以下类型事件来对进行增量同步：
+
+| 事件类型          | 动作类型      | 触发行为     |
+| --------------- | ----------- | ----------- |
+| `issue`         | `opened` `edited` `deleted` `closed` `reopened` `labeled` `unlabeled`    | 增量同步 Issue          |
+| `issue_comment` | `created` `edited` `deleted`                                             | 增量同步 Issue Comment  |
+| `pull_request`  | `opened` `edited` `closed` `reopened` `labeled` `unlabeled`              | 增量同步 Pull Request   |
+| `pull_request_review`         | `submitted` `edited` `dismissed`                           | 增量同步 Review         |
+| `pull_request_review_comment` |  `created` `edited` `deleted`                              | 增量同步 Review Comment |
+
 ## 同步内容
 
 ### 同步 Pull Request 内容
