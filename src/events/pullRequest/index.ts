@@ -39,6 +39,7 @@ export async function handlePullRequestEvent(
         ...pullRequest,
       });
 
+      // TODO: Avoid repeated processing contributor email when pr merged.
       // Synchronize contributor mailboxes when pull request is merged.
       if (pullRequest.merged_at !== null) {
         // Fetch the patch of pull request.
