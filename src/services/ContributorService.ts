@@ -10,7 +10,9 @@ export const IContributorServiceToken = new Token<IContributorService>();
 
 export interface IContributorService {
   listNoEmailContributorsLogin(): Promise<string[]>;
-  syncContributorEmailFromPR(query: SyncContributorEmailQuery): Promise<void>;
+  syncContributorEmailFromPR(
+    query: SyncContributorEmailQuery
+  ): Promise<boolean>;
 }
 
 @Service(IContributorServiceToken)
@@ -28,12 +30,12 @@ export class ContributorService implements IContributorService {
 
   async syncContributorEmailFromPR(
     query: SyncContributorEmailQuery
-  ): Promise<void> {
+  ): Promise<boolean> {
     const { contributor_login: login, pull_request_patch: patch } = query;
     const emailFound = await ContributorService.extractEmailFromPRPatch(patch);
 
     if (emailFound === null) {
-      return;
+      return false;
     }
 
     try {
@@ -41,8 +43,10 @@ export class ContributorService implements IContributorService {
       this.log.info(
         `sync contributor ${login} with email ${emailFound} success`
       );
+      return true;
     } catch (err) {
       this.log.error(`failed to sync contributor email ${err}`);
+      return false;
     }
   }
 

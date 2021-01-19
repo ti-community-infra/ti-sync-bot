@@ -26,19 +26,19 @@ SYNC_REPOS=tikv/tikv,pingcap/tipocket
 
 增量同步是基于 Github 的 WebHook 机制实现的，为了能够在 bot 启动过程中及时处理 WebHook 发送过来的数据，全量同步和增量同步被设计成并发进行。
 
-ti-sync-bot 通过监听以下类型事件来对进行增量同步：
+ti-sync-bot 通过监听以下类型事件来对 Github 数据进行增量同步：
 
 | 事件类型          | 动作类型      | 触发行为     |
 | --------------- | ----------- | ----------- |
-| `issue`         | `opened` `edited` `deleted` `closed` `reopened` `labeled` `unlabeled`    | 增量同步 Issue          |
-| `issue_comment` | `created` `edited` `deleted`                                             | 增量同步 Issue Comment  |
-| `pull_request`  | `opened` `edited` `closed` `reopened` `labeled` `unlabeled`              | 增量同步 Pull Request   |
-| `pull_request_review`         | `submitted` `edited` `dismissed`                           | 增量同步 Review         |
-| `pull_request_review_comment` |  `created` `edited` `deleted`                              | 增量同步 Review Comment |
+| `issue`         | `opened` `edited` `deleted` `closed` `reopened` `labeled` `unlabeled`  | 增量同步 Issue          |
+| `issue_comment` | `created` `edited` `deleted`                                           | 增量同步 Issue Comment  |
+| `pull_request`  | `opened` `edited` `closed` `reopened` `labeled` `unlabeled`            | 增量同步 Pull Request、Contributor Email |
+| `pull_request_review`         | `submitted` `edited` `dismissed`                         | 增量同步 Review         |
+| `pull_request_review_comment` | `created` `edited` `deleted`                             | 增量同步 Review Comment |
 
 ## 同步内容
 
-### 同步 Pull Request 内容
+### 同步 Pull Request
 
 | 字段名称         | 字段说明     |
 | --------------- | ----------- |
@@ -71,3 +71,16 @@ ti-sync-bot 通过监听以下类型事件来对进行增量同步：
 | label           | 使用逗号分隔多个标签名。 |
 | relation        | 描述的是 PR 作者与公司的关系，其类型包括：`member`、`not member`。 |
 | association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括：`COLLABORATOR`、`FIRST_TIME_CONTRIBUTOR`、`CONTRIBUTOR`、`MEMBER`、`NONE`。 |
+
+### 同步 Contributor Email
+
+代码贡献者向开源仓库贡献代码，Commit 当中会带有贡献者的签名信息，签名的格式一般是：`From: zhangsan <zhangsan@mail.com>`。
+
+另外，一些仓库还提议代码贡献者在 Commit Message 当中添加签名信息，签名的格式一般为：`Signed-off-by: zhangsan <zhangsan@mail.com>`。
+
+ti-sync-bot 通过 Pull Request 的 Patch 格式文件（ [示例](https://patch-diff.githubusercontent.com/raw/tikv/tikv/pull/9385.patch) ）获取代码贡献者的签名信息，并将其中的电子邮箱信息同步到数据库，以建立贡献者基本信息存档。其支持处理上述两种类型的签名格式，并且优先采用 Commit Message 当中的签名信息。
+
+<img width="424" alt="Patch Example" src="https://user-images.githubusercontent.com/5086433/104900941-ae1dae00-59b7-11eb-959a-5bea44ae5410.png">
+
+
+

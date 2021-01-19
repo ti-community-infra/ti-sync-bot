@@ -58,6 +58,19 @@ describe("Test for CommentService", () => {
       expect(emailBeUpdated).toBe("lisi1024@example.com");
     });
 
+    test("pull patch without email", async () => {
+      await contributorService.syncContributorEmailFromPR({
+        contributor_login: "lisi",
+        pull_request_patch: `From 9b9d79f76edbe02310afc50a50d236d84bee44db Mon Sep 17 00:00:00 2001
+        From: -
+        Date: Fri, 25 Dec 2020 11:00:42 +0800
+        Subject: [PATCH 1/1] Update 5.txt
+        ---`,
+      });
+
+      expect(updateMock).not.toBeCalled();
+    });
+
     afterEach(() => {
       updateMock.mockClear();
     });

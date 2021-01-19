@@ -14,8 +14,13 @@ export class ContributorRepository extends Repository<ContributorInfo> {
     const wheres =
       "where user not in (select github from contributor_info where email is not null) and status='merged'";
     const rawSQL = `select distinct(user) as user from pulls ${wheres}`;
+    const rows = await this.manager.connection
+      .createQueryRunner()
+      .query(rawSQL);
 
-    return await this.manager.connection.createQueryRunner().query(rawSQL);
+    return rows.map((row: { user: string }) => {
+      return row.user;
+    });
   }
 
   /**
@@ -32,6 +37,7 @@ export class ContributorRepository extends Repository<ContributorInfo> {
     if (contributorInfoStored === undefined) {
       contributorInfoBeSaved = new ContributorInfo();
       contributorInfoBeSaved.github = login;
+      contributorInfoBeSaved.email = email;
     } else {
       contributorInfoBeSaved = {
         ...contributorInfoStored,
