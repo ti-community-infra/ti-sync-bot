@@ -10,6 +10,10 @@ export class Time {
   }
 }
 
+/**
+ * Convert a time string into a Time object that can support more operations.
+ * @param dateStr
+ */
 export function time(dateStr: string) {
   return new Time(dateStr);
 }

@@ -29,20 +29,3 @@ export function getChildLogger(logger: Logger, name: string, level: string) {
     error: childLogger.error.bind(childLogger),
   };
 }
-
-/**
- * Determine that whether time A later than time B.
- * @deprecated
- * @param timeAStr String of time A.
- * @param timeBStr String of time B.
- * @return If time A later than time B, return true.
- */
-export function timeALaterThanTimeB(
-  timeAStr: string,
-  timeBStr: string
-): boolean {
-  const timeA = timeAStr !== undefined ? Number(Date.parse(timeAStr)) : 0;
-  const timeB = timeBStr !== undefined ? Number(Date.parse(timeBStr)) : 0;
-
-  return timeA > timeB;
-}
