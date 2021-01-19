@@ -32,7 +32,13 @@ describe("Test for CommentService", () => {
         pull_request_patch: `From 9b9d79f76edbe02310afc50a50d236d84bee44db Mon Sep 17 00:00:00 2001
         From: lisi <lisi1024@example.com>
         Date: Fri, 25 Dec 2020 11:00:42 +0800
-        Subject: [PATCH 1/1] Update 5.txt
+        Subject: [PATCH 1/2] Update 5.txt
+        
+        Signed-off-by: lisi <lisi1024@example.com>
+        ---
+        From: lisi <lisi1024@example.com>
+        Date: Fri, 25 Dec 2020 11:00:42 +0800
+        Subject: [PATCH 1/2] Update 5.txt
         
         Signed-off-by: zhangsan <zhangsan1024@example.com>
         ---`,

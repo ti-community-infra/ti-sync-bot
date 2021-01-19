@@ -8,6 +8,8 @@ import { InjectRepository } from "typeorm-typedi-extensions";
 
 export const IContributorServiceToken = new Token<IContributorService>();
 
+const EMAIL_REGEX = /\<(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)\>/;
+
 export interface IContributorService {
   listNoEmailContributorsLogin(): Promise<string[]>;
   syncContributorEmailFromPR(
@@ -62,13 +64,14 @@ export class ContributorService implements IContributorService {
     // Obtain the email address from commit message.
     // For example:
     // Signed-off-by: zhangsan <zhangsan@example.com>
-    let signOffMatches = patch?.match(/Signed-off-by:.*/);
+    let signOffMatches = patch?.match(/Signed-off-by:.*/gi);
 
     if (signOffMatches !== null) {
+      // Notice: Choice the last commit message submitted in a pull request preferentially.
+      signOffMatches = signOffMatches.reverse();
+
       for (let signOffMatch of signOffMatches) {
-        let matches = signOffMatch.match(
-          /\<(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)\>/
-        );
+        let matches = signOffMatch.match(EMAIL_REGEX);
 
         if (matches !== null && matches[1] !== undefined) {
           return matches[1];
@@ -79,13 +82,11 @@ export class ContributorService implements IContributorService {
     // Obtain the email address from the signature of the commit author.
     // For example:
     // From: zhangsan <zhangsan@example.com>
-    let fromMatches = patch?.match(/From:.*/);
+    let fromMatches = patch?.match(/From:.*/g);
 
     if (fromMatches !== null) {
       for (let fromMatch of fromMatches) {
-        let matches = fromMatch.match(
-          /\<(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)\>/
-        );
+        let matches = fromMatch.match(EMAIL_REGEX);
 
         if (matches !== null && matches[1] !== undefined) {
           return matches[1];

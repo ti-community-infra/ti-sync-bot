@@ -40,9 +40,9 @@ export async function handlePullRequestEvent(
       });
 
       // Synchronize contributor mailboxes when pull request is merged.
-      if (pullRequest.mergeable) {
+      if (pullRequest.merged_at !== null) {
         // Fetch the patch of pull request.
-        let patch = await getPullRequestPatch(
+        const patch = await getPullRequestPatch(
           context.pullRequest(),
           context.octokit
         );
