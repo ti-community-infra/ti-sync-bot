@@ -2,30 +2,60 @@ import { Context } from "probot";
 import { ICommentService } from "../../services/CommentService";
 import { IPullService } from "../../services/PullService";
 import { EventPayloads } from "@octokit/webhooks";
+import { IContributorService } from "../../services/ContributorService";
+import { getPullRequestPatch } from "../common";
 
 /**
  * Handle pull request event.
  * Refer: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request
  * @param context
  * @param pullService
+ * @param contributorService
  */
 export async function handlePullRequestEvent(
   context: Context<EventPayloads.WebhookPayloadPullRequest>,
-  pullService: IPullService
+  pullService: IPullService,
+  contributorService: IContributorService
 ) {
   const { action, pull_request: pullRequest } = context.payload;
 
   switch (action) {
     case "opened":
     case "edited":
-    case "closed":
     case "reopened":
     case "labeled":
     case "unlabeled":
+    case "synchronize":
+      // Synchronize pull request.
       await pullService.syncPullRequest({
         ...context.repo(),
         ...pullRequest,
       });
+      break;
+    case "closed":
+      // Synchronize pull request.
+      await pullService.syncPullRequest({
+        ...context.repo(),
+        ...pullRequest,
+      });
+
+      // TODO: Avoid repeated processing contributor email when pr merged.
+      // Synchronize contributor mailboxes when pull request is merged.
+      if (pullRequest.merged_at !== null) {
+        // Fetch the patch of pull request.
+        const patch = await getPullRequestPatch(
+          context.pullRequest(),
+          context.octokit
+        );
+
+        if (patch !== null) {
+          await contributorService.syncContributorEmailFromPR({
+            contributor_login: pullRequest.user.login,
+            pull_request_patch: patch,
+          });
+        }
+      }
+
       break;
     // Notice: Other events of the pull request will not change the data we need
     // to collect, but will modify the update event.

@@ -3,15 +3,17 @@ import { Context, Probot, ProbotOctokit } from "probot";
 import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
 
+import { ILoggerToken } from "./common/token";
 import { IPullServiceToken } from "./services/PullService";
 import { ICommentServiceToken } from "./services/CommentService";
-import { ILoggerToken } from "./common/token";
+import { IIssueServiceToken } from "./services/IssueService";
+import { IContributorServiceToken } from "./services/ContributorService";
+
 import {
   handleAppInstallOnAccountEvent,
   handleAppInstallOnRepoEvent,
   handleAppStartUpEvent,
 } from "./events/app";
-import { IIssueServiceToken } from "./services/IssueService";
 import {
   handlePullRequestEvent,
   handlePullRequestReviewCommentEvent,
@@ -46,7 +48,8 @@ export = async (app: Probot) => {
         github,
         Container.get(IPullServiceToken),
         Container.get(ICommentServiceToken),
-        Container.get(IIssueServiceToken)
+        Container.get(IIssueServiceToken),
+        Container.get(IContributorServiceToken)
       ).then(null);
 
       // Establish WebHook listen.
@@ -62,7 +65,8 @@ export = async (app: Probot) => {
           context,
           Container.get(IPullServiceToken),
           Container.get(ICommentServiceToken),
-          Container.get(IIssueServiceToken)
+          Container.get(IIssueServiceToken),
+          Container.get(IContributorServiceToken)
         );
       });
 
@@ -71,12 +75,17 @@ export = async (app: Probot) => {
           context,
           Container.get(IPullServiceToken),
           Container.get(ICommentServiceToken),
-          Container.get(IIssueServiceToken)
+          Container.get(IIssueServiceToken),
+          Container.get(IContributorServiceToken)
         );
       });
 
       app.on("pull_request", async (context) => {
-        await handlePullRequestEvent(context, Container.get(IPullServiceToken));
+        await handlePullRequestEvent(
+          context,
+          Container.get(IPullServiceToken),
+          Container.get(IContributorServiceToken)
+        );
       });
 
       app.on("pull_request_review", async (context) => {
@@ -91,6 +100,10 @@ export = async (app: Probot) => {
           context,
           Container.get(ICommentServiceToken)
         );
+      });
+
+      app.on("push", async (context) => {
+        console.log("push", context);
       });
 
       app.on("issues", async (context) => {

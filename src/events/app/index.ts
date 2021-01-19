@@ -4,9 +4,16 @@ import { EventPayloads } from "@octokit/webhooks";
 import { IPullService } from "../../services/PullService";
 import { ICommentService } from "../../services/CommentService";
 import { IIssueService } from "../../services/IssueService";
+import { IContributorService } from "../../services/ContributorService";
 import { sleep } from "../../utils/util";
 
-import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
+import { RepoKey } from "../../common/types";
+import {
+  fetchAllTypeComments,
+  getPullRequestPatch,
+  getSyncRepositoryListFromEnv,
+  getSyncRepositoryListFromInstallation,
+} from "../common";
 
 /**
  * Handle the event that triggered when the program start up.
@@ -15,13 +22,15 @@ import { PullKey, RepoKey, pullKey2IssueKey } from "../../common/types";
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppStartUpEvent(
   app: Probot,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   let repoConfigs: RepoKey[];
 
@@ -40,6 +49,9 @@ export async function handleAppStartUpEvent(
       issueService
     );
   }
+
+  // Notice: Contributor email sync must execute after the pull request sync completed.
+  await handleSyncContributorEmail(github, pullService, contributorService);
 }
 
 /**
@@ -48,12 +60,14 @@ export async function handleAppStartUpEvent(
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context<EventPayloads.WebhookPayloadInstallation>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   const { installation, repositories } = context.payload;
   const repoConfigs: RepoKey[] = repositories.map(
@@ -74,6 +88,12 @@ export async function handleAppInstallOnAccountEvent(
       issueService
     );
   }
+
+  await handleSyncContributorEmail(
+    context.octokit,
+    pullService,
+    contributorService
+  );
 }
 
 /**
@@ -83,12 +103,14 @@ export async function handleAppInstallOnAccountEvent(
  * @param pullService
  * @param commentService
  * @param issueService
+ * @param contributorService
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context<EventPayloads.WebhookPayloadInstallationRepositories>,
   pullService: IPullService,
   commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  contributorService: IContributorService
 ) {
   const { installation, repositories_added } = context.payload;
   const repoConfigs: RepoKey[] = repositories_added.map(
@@ -109,6 +131,12 @@ export async function handleAppInstallOnRepoEvent(
       issueService
     );
   }
+
+  await handleSyncContributorEmail(
+    context.octokit,
+    pullService,
+    contributorService
+  );
 }
 
 /**
@@ -125,6 +153,24 @@ async function handleSyncRepo(
   pullService: IPullService,
   commentService: ICommentService,
   issueService: IIssueService
+) {
+  await handleSyncPulls(repoKey, github, pullService, commentService);
+
+  await handleSyncIssues(repoKey, github, issueService);
+}
+
+/**
+ * Handle pull request of a repository.
+ * @param repoKey
+ * @param github
+ * @param pullService
+ * @param commentService
+ */
+async function handleSyncPulls(
+  repoKey: RepoKey,
+  github: InstanceType<typeof ProbotOctokit>,
+  pullService: IPullService,
+  commentService: ICommentService
 ) {
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
@@ -151,17 +197,57 @@ async function handleSyncRepo(
       // Sync pull request.
       await pullService.syncPullRequest({ ...repoKey, ...pull });
 
-      // Sync comment.
-      await handleSyncPullComments(pullKey, github, commentService);
+      // Sync comments of pull request.
+      const { reviews, reviewComments, comments } = await fetchAllTypeComments(
+        github,
+        pullKey
+      );
 
-      // TODO: Sync Open PR Status.
-      // TODO: Sync Contributor Email.
+      await commentService.syncPullRequestReviews({
+        pull: pullKey,
+        reviews: reviews,
+      });
+
+      await commentService.syncPullRequestReviewComments({
+        pull: pullKey,
+        review_comments: reviewComments,
+      });
+
+      await commentService.syncPullRequestComments({
+        pull: pullKey,
+        comments: comments,
+      });
+
+      // Sync status of pull request.
+      await pullService.syncPullRequestStatus({
+        ...repoKey,
+        pull_number: pull.number,
+        updated_at: pull.updated_at,
+        comments: comments,
+        reviews: reviews,
+        review_comments: reviewComments,
+      });
     }
 
     // TODO: Optimize the sleep time.
     // In order to avoid frequent access to the API.
     await sleep(1000);
   }
+}
+
+/**
+ * Handle issue of repository.
+ * @param repoKey
+ * @param github
+ * @param issueService
+ */
+async function handleSyncIssues(
+  repoKey: RepoKey,
+  github: InstanceType<typeof ProbotOctokit>,
+  issueService: IIssueService
+) {
+  const { owner, repo } = repoKey;
+  const repoSignature = `${owner}/${repo}`;
 
   // Load issues in pagination mode.
   const issueIterator = github.paginate.iterator(github.issues.listForRepo, {
@@ -191,107 +277,42 @@ async function handleSyncRepo(
 }
 
 /**
- * Handle the comments of pull request.
- * @param pullKey
+ * Synchronize contributor email according to the patch of pull request.
+ * @param pullService
+ * @param contributorService
  * @param github
- * @param commentService
  */
-async function handleSyncPullComments(
-  pullKey: PullKey,
+async function handleSyncContributorEmail(
   github: InstanceType<typeof ProbotOctokit>,
-  commentService: ICommentService
+  pullService: IPullService,
+  contributorService: IContributorService
 ) {
-  const { reviews, reviewComments, comments } = await fetchAllTypeComments(
-    github,
-    pullKey
-  );
+  github.log.info(`syncing contributor email`);
 
-  await commentService.syncPullRequestReviews({
-    pull: pullKey,
-    reviews: reviews,
-  });
+  const noEmailContributorLogins = await contributorService.listNoEmailContributorsLogin();
 
-  await commentService.syncPullRequestReviewComments({
-    pull: pullKey,
-    review_comments: reviewComments,
-  });
+  for (const login of noEmailContributorLogins) {
+    const pulls = await pullService.getContributorAllPullRequests(login);
 
-  await commentService.syncPullRequestComments({
-    pull: pullKey,
-    comments: comments,
-  });
-}
+    for (let pull of pulls) {
+      const pullKey = {
+        owner: pull.owner,
+        repo: pull.repo,
+        pull_number: pull.pullNumber,
+      };
 
-/**
- * Get all the repositories where bots are installed.
- * Notice: only fetch the public, not archived and not enable repository.
- * @param app
- */
-export async function getSyncRepositoryListFromInstallation(
-  app: Probot
-): Promise<RepoKey[]> {
-  const syncRepos: RepoKey[] = [];
-  const github = await app.auth();
-  const { data: installations } = await github.apps.listInstallations();
+      const patch = await getPullRequestPatch(pullKey, github);
 
-  for (let i of installations) {
-    const github = await app.auth(i.id);
-    const res = await github.apps.listReposAccessibleToInstallation();
-    const repositories = res.data.repositories;
+      if (patch === null) continue;
 
-    repositories.forEach((repository) => {
-      if (!repository.private && !repository.disabled && !repository.archived) {
-        syncRepos.push({
-          owner: repository.owner.login,
-          repo: repository.name,
-        });
-      }
-    });
+      const syncSuccess = await contributorService.syncContributorEmailFromPR({
+        contributor_login: login,
+        pull_request_patch: patch,
+      });
+
+      if (syncSuccess) break;
+    }
   }
 
-  return syncRepos;
-}
-
-/**
- * Get the sync repository config from the .env file.
- * The option `SYNC_REPOS` is the full name of the repository separated by comma,
- * for example: pingcap/tidb,tikv/tikv.
- */
-function getSyncRepositoryListFromEnv(): RepoKey[] {
-  const s = process.env.SYNC_REPOS;
-  const fullNames = s === undefined ? [] : s.trim().split(",");
-  const syncRepos: RepoKey[] = [];
-
-  fullNames.forEach((fullName) => {
-    let arr = fullName.split("/");
-
-    if (arr.length === 2) {
-      syncRepos.push({
-        owner: arr[0].trim(),
-        repo: arr[1].trim(),
-      });
-    }
-  });
-
-  return syncRepos;
-}
-
-/**
- * Fetch all type comment of pull request.
- * @param github
- * @param pullKey
- */
-async function fetchAllTypeComments(
-  github: InstanceType<typeof ProbotOctokit>,
-  pullKey: PullKey
-) {
-  const issueKey = pullKey2IssueKey(pullKey);
-  const reviews = await github.paginate(github.pulls.listReviews, pullKey);
-  const reviewComments = await github.paginate(
-    github.pulls.listReviewComments,
-    pullKey
-  );
-  const comments = await github.paginate(github.issues.listComments, issueKey);
-
-  return { reviews, reviewComments, comments };
+  github.log.info(`finish syncing contributor email`);
 }
