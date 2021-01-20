@@ -18,17 +18,16 @@ export async function handlePullRequestEvent(
   contributorService: IContributorService
 ) {
   const { action, pull_request: pullRequest } = context.payload;
+  const pullKey = context.pullRequest();
 
-  // Synchronize pull request.
+  // Sync pull request.
   if (
-    [
-      "opened",
-      "edited",
-      "reopened",
-      "labeled",
-      "unlabeled",
-      "synchronize",
-    ].includes(action)
+    action === "opened" ||
+    action === "edited" ||
+    action === "reopened" ||
+    action === "closed" ||
+    action === "labeled" ||
+    action === "unlabeled"
   ) {
     await pullService.syncPullRequest({
       ...context.repo(),
@@ -36,22 +35,18 @@ export async function handlePullRequestEvent(
     });
   }
 
-  // Sync the last commit time of pull request.
-  if (action === "synchronize" || action === "opened") {
+  // Sync the last commit time of pull request When new code is committed.
+  if (action === "opened" || action === "synchronize") {
     await pullService.syncOpenPRLastCommitTime({
-      pull: context.pullRequest(),
-      last_commit_time: context.payload.pull_request.updated_at,
+      pull: pullKey,
+      last_commit_time: pullRequest.updated_at,
     });
   }
 
   // TODO: Avoid repeated processing contributor email when pr merged.
-  // Synchronize contributor mailboxes when pull request is merged.
+  // Sync contributor email when pull request is merged.
   if (action === "closed" && pullRequest.merged_at !== null) {
-    // Fetch the patch of pull request.
-    const patch = await getPullRequestPatch(
-      context.pullRequest(),
-      context.octokit
-    );
+    const patch = await getPullRequestPatch(pullKey, context.octokit);
 
     if (patch !== null) {
       await contributorService.syncContributorEmailFromPR({
@@ -59,6 +54,21 @@ export async function handlePullRequestEvent(
         pull_request_patch: patch,
       });
     }
+  }
+
+  // Notice: All actions of pull_request event will change the PR update time, but
+  // the PR update time of the following actions have been updated in the previous code.
+  if (
+    action !== "opened" &&
+    action !== "edited" &&
+    action !== "reopened" &&
+    action !== "labeled" &&
+    action !== "unlabeled"
+  ) {
+    await pullService.syncPullRequestUpdateTime(
+      pullKey,
+      pullRequest.updated_at
+    );
   }
 }
 
