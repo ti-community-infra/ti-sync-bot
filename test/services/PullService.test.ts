@@ -300,16 +300,120 @@ describe("Test for PullService", () => {
       });
 
       expect(saveMock).toBeCalled();
-
       const statusBeSaved = saveMock.mock.calls[0][0];
-
       expect(statusBeSaved.lastUpdateCodeAt).toBe(lastCommitTime);
       expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
       expect(statusBeSaved.lastReviewAt).toBe(lastReviewTime);
     });
 
+    test("PR with comments and the last comment is issue comment", async () => {
+      const lastCommentTime = "2020-12-13 13:13:13";
+
+      await pullService.syncOpenPullRequestStatus({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          updated_at: "",
+          user: {
+            login: "mini256",
+          },
+        },
+        commits: [],
+        // Issue comment list.
+        comments: [
+          {
+            id: 103,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            // Last comment time.
+            updated_at: lastCommentTime,
+            user: {
+              login: "big1024",
+            },
+          },
+        ],
+        review_comments: [
+          {
+            id: 104,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            updated_at: "2020-10-10 10:10:10",
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+        reviews: [],
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+    });
+
+    test("PR with comments and the pr status record existed in DB", async () => {
+      const lastCommitTime = "2020-12-12 12:12:12";
+      const lastCommentTime = "2020-12-13 13:13:13";
+      const lastReviewTime = "2020-12-14 14:14:14";
+
+      // Mock return the pr status record existed in DB.
+      findOneMock.mockResolvedValue({
+        owner: "pingcap",
+        repo: "tidb",
+        pullNumber: 1,
+        lastCommentAt: "2010-10-10 10:10:10",
+        lastReviewAt: lastReviewTime,
+        lastUpdateCodeAt: lastCommitTime,
+      });
+
+      await pullService.syncOpenPullRequestStatus({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          updated_at: "",
+          user: {
+            login: "mini256",
+          },
+        },
+        commits: [],
+        comments: [
+          {
+            id: 103,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            updated_at: "2020-10-10 10:10:10",
+            user: {
+              login: "big1024",
+            },
+          },
+        ],
+        review_comments: [
+          {
+            id: 104,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            // Last comment time.
+            updated_at: lastCommentTime,
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+        reviews: [],
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+      expect(statusBeSaved.lastReviewAt).toBe(lastReviewTime);
+      expect(statusBeSaved.lastUpdateCodeAt).toBe(lastCommitTime);
+    });
+
     afterEach(() => {
       saveMock.mockClear();
+      findOneMock.mockClear();
     });
   });
 
