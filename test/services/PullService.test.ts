@@ -4,15 +4,21 @@ import { getLog } from "probot/lib/helpers/get-log";
 
 import { IPullService, PullService } from "../../src/services/PullService";
 import { Pull } from "../../src/db/entities/Pull";
+import { OpenPRStatus } from "../../src/db/entities/OpenPRStatus";
 
 describe("Test for PullService", () => {
   const logger = getLog();
   const pullRepository = new Repository<Pull>();
+  const openPRStatusRepository = new Repository<OpenPRStatus>();
 
   let pullService: IPullService;
 
   beforeAll(() => {
-    pullService = new PullService(pullRepository, logger);
+    pullService = new PullService(
+      pullRepository,
+      openPRStatusRepository,
+      logger
+    );
   });
 
   beforeEach(() => {

@@ -47,6 +47,10 @@ ti-sync-bot 通过监听以下类型事件来对 Github 数据进行增量同步
 | relation        | 描述的是 PR 作者与公司的关系，其类型包括：`member`、`not member`。 |
 | association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括：`COLLABORATOR`、`FIRST_TIME_CONTRIBUTOR`、`CONTRIBUTOR`、`MEMBER`、`NONE`。 |
 
+### 同步 Pull Request Status
+
+
+
 ### 同步 Comment
 
 目前，ti-sync-bot 会对 `common comment`、`review` 和 `review comment` 三种类型的评论进行同步。
@@ -78,7 +82,9 @@ ti-sync-bot 通过监听以下类型事件来对 Github 数据进行增量同步
 
 另外，一些仓库还提议代码贡献者在 Commit Message 当中添加签名信息，签名的格式一般为：`Signed-off-by: zhangsan <zhangsan@mail.com>`。
 
-ti-sync-bot 通过 Pull Request 的 Patch 格式文件（ [示例](https://patch-diff.githubusercontent.com/raw/tikv/tikv/pull/9385.patch) ）获取代码贡献者的签名信息，并将其中的电子邮箱信息同步到数据库，以建立贡献者基本信息存档。其支持处理上述两种类型的签名格式，并且优先采用 Commit Message 当中的签名信息。
+ti-sync-bot 通过 Pull Request 的 Patch 格式文件（ [示例](https://patch-diff.githubusercontent.com/raw/tikv/tikv/pull/9385.patch) ）获取代码贡献者的签名信息，并将其中的电子邮箱信息同步到数据库，以建立贡献者基本信息存档。
+
+其支持处理上述两种类型的签名格式，并且优先采用 Commit Message 当中的签名信息。而在多条附带签名信息的 Commit Message 当中，优先选择最后提交的 Commit Message 的签名信息，以便允许开发者对前面提交的错误签名信息进行更正。
 
 <img width="424" alt="Patch Example" src="https://user-images.githubusercontent.com/5086433/104900941-ae1dae00-59b7-11eb-959a-5bea44ae5410.png">
 

@@ -1,8 +1,13 @@
 export interface SyncPullStatusQuery {
-  owner: string;
-  repo: string;
-  pull_number: number;
-  updated_at: string;
+  pull: {
+    owner: string;
+    repo: string;
+    pull_number: number;
+    updated_at: string;
+    user: {
+      login: string;
+    } | null;
+  };
   comments: {
     id: number;
     user: {
@@ -34,5 +39,13 @@ export interface SyncPullStatusQuery {
     created_at: string;
     updated_at: string;
     author_association: string;
+  }[];
+  commits: {
+    commit: {
+      committer: {
+        name?: string;
+        date?: string;
+      } | null;
+    };
   }[];
 }

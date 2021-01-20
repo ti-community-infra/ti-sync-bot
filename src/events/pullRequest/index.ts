@@ -19,46 +19,46 @@ export async function handlePullRequestEvent(
 ) {
   const { action, pull_request: pullRequest } = context.payload;
 
-  switch (action) {
-    case "opened":
-    case "edited":
-    case "reopened":
-    case "labeled":
-    case "unlabeled":
-    case "synchronize":
-      // Synchronize pull request.
-      await pullService.syncPullRequest({
-        ...context.repo(),
-        ...pullRequest,
+  // Synchronize pull request.
+  if (
+    [
+      "opened",
+      "edited",
+      "reopened",
+      "labeled",
+      "unlabeled",
+      "synchronize",
+    ].includes(action)
+  ) {
+    await pullService.syncPullRequest({
+      ...context.repo(),
+      ...pullRequest,
+    });
+  }
+
+  // Sync the last commit time of pull request.
+  if (action === "synchronize" || action === "opened") {
+    await pullService.syncOpenPRLastCommitTime({
+      pull: context.pullRequest(),
+      last_commit_time: context.payload.pull_request.updated_at,
+    });
+  }
+
+  // TODO: Avoid repeated processing contributor email when pr merged.
+  // Synchronize contributor mailboxes when pull request is merged.
+  if (action === "closed" && pullRequest.merged_at !== null) {
+    // Fetch the patch of pull request.
+    const patch = await getPullRequestPatch(
+      context.pullRequest(),
+      context.octokit
+    );
+
+    if (patch !== null) {
+      await contributorService.syncContributorEmailFromPR({
+        contributor_login: pullRequest.user.login,
+        pull_request_patch: patch,
       });
-      break;
-    case "closed":
-      // Synchronize pull request.
-      await pullService.syncPullRequest({
-        ...context.repo(),
-        ...pullRequest,
-      });
-
-      // TODO: Avoid repeated processing contributor email when pr merged.
-      // Synchronize contributor mailboxes when pull request is merged.
-      if (pullRequest.merged_at !== null) {
-        // Fetch the patch of pull request.
-        const patch = await getPullRequestPatch(
-          context.pullRequest(),
-          context.octokit
-        );
-
-        if (patch !== null) {
-          await contributorService.syncContributorEmailFromPR({
-            contributor_login: pullRequest.user.login,
-            pull_request_patch: patch,
-          });
-        }
-      }
-
-      break;
-    // Notice: Other events of the pull request will not change the data we need
-    // to collect, but will modify the update event.
+    }
   }
 }
 
@@ -67,12 +67,15 @@ export async function handlePullRequestEvent(
  * Refer: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request_review
  * @param context
  * @param commentService
+ * @param pullService
  */
 export async function handlePullRequestReviewEvent(
   context: Context<EventPayloads.WebhookPayloadPullRequestReview>,
-  commentService: ICommentService
+  commentService: ICommentService,
+  pullService: IPullService
 ) {
-  const { action, review } = context.payload;
+  const { action, review, pull_request } = context.payload;
+  const pullKey = context.pullRequest();
 
   switch (action) {
     case "submitted":
@@ -85,6 +88,17 @@ export async function handlePullRequestReviewEvent(
         // pull request will be changed due to review operations.
         ...review,
       });
+
+      await pullService.syncOpenPRLastReviewTime({
+        pull: pullKey,
+        last_review_time: review.submitted_at,
+      });
+
+      await pullService.syncPullRequestUpdateTime(
+        pullKey,
+        pull_request.updated_at
+      );
+
       break;
   }
 }
@@ -94,21 +108,36 @@ export async function handlePullRequestReviewEvent(
  * Refer: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request_review_comment
  * @param context
  * @param commentService
+ * @param pullService
  */
 export async function handlePullRequestReviewCommentEvent(
   context: Context<EventPayloads.WebhookPayloadPullRequestReviewComment>,
-  commentService: ICommentService
+  commentService: ICommentService,
+  pullService: IPullService
 ) {
-  const { action, comment } = context.payload;
+  const { action, comment, pull_request } = context.payload;
+  const pullKey = context.pullRequest();
 
   switch (action) {
     case "created":
     case "edited":
     case "deleted":
       await commentService.syncPullRequestReviewComment({
-        ...context.pullRequest(),
+        ...pullKey,
         ...comment,
       });
+
+      await pullService.syncOpenPRLastCommentTime({
+        pull: context.pullRequest(),
+        last_comment_time: comment.updated_at,
+        last_comment_author: comment.user,
+      });
+
+      await pullService.syncPullRequestUpdateTime(
+        pullKey,
+        pull_request.updated_at
+      );
+
       break;
   }
 }
