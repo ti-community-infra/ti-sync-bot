@@ -104,10 +104,6 @@ export = async (app: Probot) => {
         );
       });
 
-      app.on("push", async (context) => {
-        console.log("push", context);
-      });
-
       app.on("issues", async (context) => {
         await handleIssueEvent(context, Container.get(IIssueServiceToken));
       });

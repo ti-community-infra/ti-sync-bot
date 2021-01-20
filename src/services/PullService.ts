@@ -244,7 +244,20 @@ export class PullService implements IPullService {
   }
 
   async syncOpenPRLastCommentTime(query: SyncPullLastCommentQuery) {
-    const { pull, last_comment_time: lastCommentTime } = query;
+    const {
+      pull,
+      last_comment_time: lastCommentTime,
+      last_comment_author,
+    } = query;
+
+    // Notice: Ignore the PR author’s own comments.
+    if (
+      pull.user === null ||
+      last_comment_author == null ||
+      pull.user.login === last_comment_author?.login
+    ) {
+      return;
+    }
 
     await this.updatePRStatus({
       ...pull,
