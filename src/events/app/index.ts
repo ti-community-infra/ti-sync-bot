@@ -10,6 +10,7 @@ import { sleep } from "../../utils/util";
 import { RepoKey } from "../../common/types";
 import {
   fetchAllTypeComments,
+  fetchPullRequestCommits,
   getPullRequestPatch,
   getSyncRepositoryListFromEnv,
   getSyncRepositoryListFromInstallation,
@@ -197,12 +198,13 @@ async function handleSyncPulls(
       // Sync pull request.
       await pullService.syncPullRequest({ ...repoKey, ...pull });
 
-      // Sync comments of pull request.
+      // Fetch comments of pull request.
       const { reviews, reviewComments, comments } = await fetchAllTypeComments(
         github,
         pullKey
       );
 
+      // Sync comments of pull request.
       await commentService.syncPullRequestReviews({
         pull: pullKey,
         reviews: reviews,
@@ -218,15 +220,23 @@ async function handleSyncPulls(
         comments: comments,
       });
 
+      // Fetch commits of pull request.
+      const commits = await fetchPullRequestCommits(pullKey, github);
+
       // Sync status of pull request.
-      await pullService.syncPullRequestStatus({
-        ...repoKey,
-        pull_number: pull.number,
-        updated_at: pull.updated_at,
-        comments: comments,
-        reviews: reviews,
-        review_comments: reviewComments,
-      });
+      // Notice: Only handle the open pull request.
+      if (pull.state === "open") {
+        await pullService.syncOpenPullRequestStatus({
+          pull: {
+            ...pullKey,
+            ...pull,
+          },
+          comments: comments,
+          reviews: reviews,
+          review_comments: reviewComments,
+          commits: commits,
+        });
+      }
     }
 
     // TODO: Optimize the sleep time.

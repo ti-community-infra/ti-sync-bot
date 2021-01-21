@@ -2,6 +2,7 @@ import { Context } from "probot";
 import { IIssueService } from "../../services/IssueService";
 import { ICommentService } from "../../services/CommentService";
 import { EventPayloads } from "@octokit/webhooks";
+import { IPullService } from "../../services/PullService";
 
 /**
  * Handle issue event.
@@ -38,12 +39,14 @@ export async function handleIssueEvent(
  * Refer: https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#issue_comment
  * @param context
  * @param commentService
+ * @param pullService
  */
 export async function handleIssueCommentEvent(
   context: Context<EventPayloads.WebhookPayloadIssueComment>,
-  commentService: ICommentService
+  commentService: ICommentService,
+  pullService: IPullService
 ) {
-  const { action, comment } = context.payload;
+  const { action, comment, issue } = context.payload;
 
   switch (action) {
     case "created":
@@ -54,9 +57,20 @@ export async function handleIssueCommentEvent(
       // Handle pull request comment.
       if (pullKey && pullKey.pull_number != undefined) {
         await commentService.syncPullRequestComment({
-          ...context.pullRequest(),
+          ...pullKey,
           ...comment,
         });
+
+        await pullService.syncOpenPRLastCommentTime({
+          pull: {
+            ...pullKey,
+            ...issue,
+          },
+          last_comment_author: comment.user,
+          last_comment_time: comment.updated_at,
+        });
+
+        await pullService.syncPullRequestUpdateTime(pullKey, issue.updated_at);
       }
 
       // TODO: Incremental sync for issue comment.

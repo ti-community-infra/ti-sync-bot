@@ -11,9 +11,12 @@ export class ContributorRepository extends Repository<ContributorInfo> {
    * will not exist in the contributor info table.
    */
   async listNoEmailContributorLogin(): Promise<string[]> {
-    const wheres =
-      "where user not in (select github from contributor_info where email is not null) and status='merged'";
+    const contributorSavedWithoutEmail =
+      "select github from contributor_info where email is not null";
+    // Notice: As long as a developer who has submitted a merged pull request is considered a contributor.
+    const wheres = `where user not in (${contributorSavedWithoutEmail}) and status='merged'`;
     const rawSQL = `select distinct(user) as user from pulls ${wheres}`;
+
     const rows = await this.manager.connection
       .createQueryRunner()
       .query(rawSQL);

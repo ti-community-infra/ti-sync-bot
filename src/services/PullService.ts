@@ -1,6 +1,5 @@
 import { Logger } from "probot";
 import { Inject, Service, Token } from "typedi";
-import { Repository } from "typeorm";
 import { InjectRepository } from "typeorm-typedi-extensions";
 
 import { ILoggerToken } from "../common/token";
@@ -11,12 +10,26 @@ import { Pull } from "../db/entities/Pull";
 import { SyncPullQuery } from "../queries/pull/SyncPullQuery";
 import { SyncPullStatusQuery } from "../queries/pull/SyncPullStatusQuery";
 import { PullKey } from "../common/types";
+import { Repository } from "typeorm";
+import { OpenPRStatus } from "../db/entities/OpenPRStatus";
+import { SyncPullLastCommentQuery } from "../queries/pull/SyncPullLastCommentQuery";
+import { SyncPullLastReviewQuery } from "../queries/pull/SyncPullLastReviewQuery";
+import { SyncPullLastCommitQuery } from "../queries/pull/SyncPullLastCommitQuery";
 
 export const IPullServiceToken = new Token<IPullService>();
 
 export interface IPullService {
   syncPullRequest(syncPullQuery: SyncPullQuery): Promise<void>;
-  syncPullRequestStatus(query: SyncPullStatusQuery): Promise<void>;
+  syncPullRequestUpdateTime(
+    pullKey: PullKey,
+    updateTime: string
+  ): Promise<void>;
+
+  syncOpenPullRequestStatus(query: SyncPullStatusQuery): Promise<void>;
+  syncOpenPRLastReviewTime(query: SyncPullLastReviewQuery): Promise<void>;
+  syncOpenPRLastCommentTime(query: SyncPullLastCommentQuery): Promise<void>;
+  syncOpenPRLastCommitTime(query: SyncPullLastCommitQuery): Promise<void>;
+
   getContributorAllPullRequests(login: string): Promise<Pull[]>;
 }
 
@@ -25,16 +38,18 @@ export class PullService implements IPullService {
   constructor(
     @InjectRepository(Pull)
     private pullRepository: Repository<Pull>,
+    @InjectRepository(OpenPRStatus)
+    private openPRStatusRepository: Repository<OpenPRStatus>,
     @Inject(ILoggerToken)
     private log: Logger
   ) {}
 
   /**
    * Synchronize the received pull request data to the database.
-   * @param syncPullQuery
+   * @param pullReceived
    */
-  async syncPullRequest(syncPullQuery: SyncPullQuery) {
-    const { owner, repo, number: pullNumber } = syncPullQuery;
+  async syncPullRequest(pullReceived: SyncPullQuery) {
+    const { owner, repo, number: pullNumber } = pullReceived;
     const pullSignature = `${owner}/${repo}#${pullNumber}`;
 
     // Get existing records from the database for comparison.
@@ -45,11 +60,13 @@ export class PullService implements IPullService {
     });
 
     if (pullStored === undefined) {
-      pullStored = PullService.makePull(syncPullQuery);
+      pullStored = PullService.makePull(pullReceived);
     }
 
     // Ignore outdated PR data.
-    const isPRUpdated = PullService.isPullUpdated(syncPullQuery, pullStored);
+    const isPRUpdated = time(pullReceived.updated_at).laterThan(
+      time(pullStored.updatedAt)
+    );
 
     if (!isPRUpdated) {
       this.log.info(`sync pull request ${pullSignature}, but not updated`);
@@ -57,7 +74,7 @@ export class PullService implements IPullService {
     }
 
     // Patch pull.
-    const pullBeSaved = PullService.patchPull(pullStored, syncPullQuery);
+    const pullBeSaved = PullService.patchPull(pullStored, pullReceived);
 
     // Save pull.
     try {
@@ -66,22 +83,6 @@ export class PullService implements IPullService {
     } catch (err) {
       this.log.error(`failed to sync pull request ${pullSignature}: ${err}`);
     }
-  }
-
-  /**
-   * Synchronize the status change of Pull Request to the database.
-   */
-  async syncPullRequestStatus() {}
-
-  /**
-   * Get all pull requests of a contributor.
-   * @param login Github login of contributor.
-   */
-  async getContributorAllPullRequests(login: string) {
-    // TODO: Ensure that all pull requests from contributors can be obtained.
-    return await this.pullRepository.find({
-      user: login,
-    });
   }
 
   /**
@@ -152,15 +153,180 @@ export class PullService implements IPullService {
   }
 
   /**
-   * Determine whether the data has been updated.
-   * @param pullReceived
-   * @param pullStored
+   * Sync update time of pull request.
+   */
+  async syncPullRequestUpdateTime(pullKey: PullKey, updateTime: string) {
+    await this.pullRepository.update(
+      {
+        owner: pullKey.owner,
+        repo: pullKey.repo,
+        pullNumber: pullKey.pull_number,
+      },
+      {
+        updatedAt: updateTime,
+      }
+    );
+  }
+
+  /**
+   * Get all pull requests of a contributor.
+   * @param login Github login of contributor.
+   */
+  async getContributorAllPullRequests(login: string) {
+    // TODO: Ensure that all pull requests from contributors can be obtained.
+    return await this.pullRepository.find({
+      user: login,
+    });
+  }
+
+  /**
+   * Synchronize the status change of Pull Request to the database.
+   * @param query
+   */
+  async syncOpenPullRequestStatus(query: SyncPullStatusQuery) {
+    const {
+      pull,
+      reviews,
+      comments: issueComments,
+      review_comments: reviewComments,
+      commits,
+    } = query;
+
+    let pullAuthorLogin = pull.user !== null ? pull.user.login : null;
+    let lastReviewTime;
+    let lastCommentTime;
+    let lastCommitTime;
+
+    // Get the last review time of PR.
+    for (let review of reviews) {
+      if (
+        review.submitted_at !== undefined &&
+        time(review.submitted_at).laterThan(time(lastReviewTime))
+      ) {
+        lastReviewTime = review.submitted_at;
+      }
+    }
+
+    // Get the last comment time of PR.
+    for (let reviewComment of reviewComments) {
+      // Notice: Ignore comments submitted by the PR author himself.
+      if (reviewComment.user?.login === pullAuthorLogin) continue;
+
+      if (time(reviewComment.updated_at).laterThan(time(lastCommentTime))) {
+        lastCommentTime = reviewComment.updated_at;
+      }
+    }
+
+    for (let issueComment of issueComments) {
+      // Notice: Ignore comments submitted by the PR author himself.
+      if (issueComment.user?.login === pullAuthorLogin) continue;
+
+      if (time(issueComment.updated_at).laterThan(time(lastCommentTime))) {
+        lastCommentTime = issueComment.updated_at;
+      }
+    }
+
+    // Get the last commit time of PR.
+    for (let commit of commits) {
+      const commitTime = commit.commit.committer?.date;
+
+      if (time(commitTime).laterThan(time(lastCommitTime))) {
+        lastCommitTime = commitTime;
+      }
+    }
+
+    await this.updatePRStatus({
+      ...pull,
+      lastCommentTime,
+      lastReviewTime,
+      lastCommitTime,
+    });
+  }
+
+  async syncOpenPRLastCommentTime(query: SyncPullLastCommentQuery) {
+    const {
+      pull,
+      last_comment_time: lastCommentTime,
+      last_comment_author,
+    } = query;
+
+    // Notice: Ignore the PR author’s own comments.
+    if (
+      pull.user === null ||
+      last_comment_author == null ||
+      pull.user.login === last_comment_author?.login
+    ) {
+      return;
+    }
+
+    await this.updatePRStatus({
+      ...pull,
+      lastCommentTime,
+    });
+  }
+
+  async syncOpenPRLastReviewTime(query: SyncPullLastReviewQuery) {
+    const { pull, last_review_time: lastReviewTime } = query;
+
+    await this.updatePRStatus({
+      ...pull,
+      lastReviewTime,
+    });
+  }
+
+  async syncOpenPRLastCommitTime(query: SyncPullLastCommitQuery) {
+    const { pull, last_commit_time: lastCommitTime } = query;
+
+    await this.updatePRStatus({
+      ...pull,
+      lastCommitTime,
+    });
+  }
+
+  /**
+   * Insert or update open_pr_status record.
    * @private
    */
-  private static isPullUpdated(
-    pullReceived: SyncPullQuery,
-    pullStored: Pull
-  ): boolean {
-    return time(pullReceived.updated_at).laterThan(time(pullStored.updatedAt));
+  private async updatePRStatus(
+    pullStatus: PullKey & {
+      lastCommentTime?: string;
+      lastReviewTime?: string;
+      lastCommitTime?: string;
+    }
+  ) {
+    let openPRStatusStored = await this.openPRStatusRepository.findOne({
+      owner: pullStatus.owner,
+      repo: pullStatus.repo,
+      pullNumber: pullStatus.pull_number,
+    });
+    let openPRStatusBeSaved = new OpenPRStatus();
+
+    if (openPRStatusStored !== undefined) {
+      openPRStatusBeSaved.owner = openPRStatusStored.owner;
+      openPRStatusBeSaved.repo = openPRStatusStored.repo;
+      openPRStatusBeSaved.pullNumber = openPRStatusStored.pullNumber;
+      openPRStatusBeSaved.lastUpdateCodeAt =
+        openPRStatusStored.lastUpdateCodeAt;
+      openPRStatusBeSaved.lastCommentAt = openPRStatusStored.lastCommentAt;
+      openPRStatusBeSaved.lastReviewAt = openPRStatusStored.lastReviewAt;
+    } else {
+      openPRStatusBeSaved.owner = pullStatus.owner;
+      openPRStatusBeSaved.repo = pullStatus.repo;
+      openPRStatusBeSaved.pullNumber = pullStatus.pull_number;
+    }
+
+    if (pullStatus.lastCommentTime !== undefined) {
+      openPRStatusBeSaved.lastCommentAt = pullStatus.lastCommentTime;
+    }
+
+    if (pullStatus.lastReviewTime !== undefined) {
+      openPRStatusBeSaved.lastReviewAt = pullStatus.lastReviewTime;
+    }
+
+    if (pullStatus.lastCommitTime !== undefined) {
+      openPRStatusBeSaved.lastUpdateCodeAt = pullStatus.lastCommitTime;
+    }
+
+    await this.openPRStatusRepository.save(openPRStatusBeSaved);
   }
 }

@@ -4,15 +4,21 @@ import { getLog } from "probot/lib/helpers/get-log";
 
 import { IPullService, PullService } from "../../src/services/PullService";
 import { Pull } from "../../src/db/entities/Pull";
+import { OpenPRStatus } from "../../src/db/entities/OpenPRStatus";
 
 describe("Test for PullService", () => {
   const logger = getLog();
   const pullRepository = new Repository<Pull>();
+  const openPRStatusRepository = new Repository<OpenPRStatus>();
 
   let pullService: IPullService;
 
   beforeAll(() => {
-    pullService = new PullService(pullRepository, logger);
+    pullService = new PullService(
+      pullRepository,
+      openPRStatusRepository,
+      logger
+    );
   });
 
   beforeEach(() => {
@@ -200,6 +206,271 @@ describe("Test for PullService", () => {
 
     afterEach(() => {
       findOneMock.mockClear();
+      saveMock.mockClear();
+    });
+  });
+
+  describe("Test for syncOpenPullRequestStatus", () => {
+    let saveMock: jest.SpyInstance;
+    let findOneMock: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveMock = jest.spyOn(openPRStatusRepository, "save");
+      saveMock.mockResolvedValue(undefined);
+      findOneMock = jest.spyOn(openPRStatusRepository, "findOne");
+      findOneMock.mockResolvedValue(undefined);
+    });
+
+    test("PR with review and comment", async () => {
+      const lastCommitTime = "2020-12-12 12:12:12";
+      const lastCommentTime = "2020-12-13 13:13:13";
+      const lastReviewTime = "2020-12-14 14:14:14";
+
+      await pullService.syncOpenPullRequestStatus({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          updated_at: "",
+          user: {
+            login: "mini256",
+          },
+        },
+        commits: [
+          {
+            commit: {
+              committer: {
+                name: "Mini256",
+                date: "2020-10-10 10:10:10",
+              },
+            },
+          },
+          {
+            commit: {
+              committer: {
+                name: "Mini256",
+                // Last time to submit code.
+                date: lastCommitTime,
+              },
+            },
+          },
+        ],
+        comments: [
+          {
+            id: 103,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            updated_at: "2020-10-10 10:10:10",
+            user: {
+              login: "big1024",
+            },
+          },
+        ],
+        review_comments: [
+          {
+            id: 104,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            // Last comment time.
+            updated_at: lastCommentTime,
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+        reviews: [
+          {
+            id: 101,
+            body: "Great",
+            submitted_at: "2020-10-10 10:10:10",
+            user: {
+              login: "big1024",
+            },
+          },
+          {
+            id: 102,
+            body: "Nice",
+            // Last review time.
+            submitted_at: lastReviewTime,
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastUpdateCodeAt).toBe(lastCommitTime);
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+      expect(statusBeSaved.lastReviewAt).toBe(lastReviewTime);
+    });
+
+    test("PR with comments and the last comment is issue comment", async () => {
+      const lastCommentTime = "2020-12-13 13:13:13";
+
+      await pullService.syncOpenPullRequestStatus({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          updated_at: "",
+          user: {
+            login: "mini256",
+          },
+        },
+        commits: [],
+        // Issue comment list.
+        comments: [
+          {
+            id: 103,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            // Last comment time.
+            updated_at: lastCommentTime,
+            user: {
+              login: "big1024",
+            },
+          },
+        ],
+        review_comments: [
+          {
+            id: 104,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            updated_at: "2020-10-10 10:10:10",
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+        reviews: [],
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+    });
+
+    test("PR with comments and the pr status record existed in DB", async () => {
+      const lastCommitTime = "2020-12-12 12:12:12";
+      const lastCommentTime = "2020-12-13 13:13:13";
+      const lastReviewTime = "2020-12-14 14:14:14";
+
+      // Mock return the pr status record existed in DB.
+      findOneMock.mockResolvedValue({
+        owner: "pingcap",
+        repo: "tidb",
+        pullNumber: 1,
+        lastCommentAt: "2010-10-10 10:10:10",
+        lastReviewAt: lastReviewTime,
+        lastUpdateCodeAt: lastCommitTime,
+      });
+
+      await pullService.syncOpenPullRequestStatus({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          updated_at: "",
+          user: {
+            login: "mini256",
+          },
+        },
+        commits: [],
+        comments: [
+          {
+            id: 103,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            updated_at: "2020-10-10 10:10:10",
+            user: {
+              login: "big1024",
+            },
+          },
+        ],
+        review_comments: [
+          {
+            id: 104,
+            body: "",
+            created_at: "2020-10-10 10:10:10",
+            // Last comment time.
+            updated_at: lastCommentTime,
+            user: {
+              login: "mini-bot",
+            },
+          },
+        ],
+        reviews: [],
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+      expect(statusBeSaved.lastReviewAt).toBe(lastReviewTime);
+      expect(statusBeSaved.lastUpdateCodeAt).toBe(lastCommitTime);
+    });
+
+    afterEach(() => {
+      saveMock.mockClear();
+      findOneMock.mockClear();
+    });
+  });
+
+  describe("Test for syncOpenPRLastCommentTime", () => {
+    let saveMock: jest.SpyInstance;
+    let findOneMock: jest.SpyInstance;
+
+    beforeAll(() => {
+      saveMock = jest.spyOn(openPRStatusRepository, "save");
+      findOneMock = jest.spyOn(openPRStatusRepository, "findOne");
+      saveMock.mockResolvedValue(undefined);
+      findOneMock.mockResolvedValue(undefined);
+    });
+
+    test("PR's author leave a comment", async () => {
+      await pullService.syncOpenPRLastCommentTime({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          user: {
+            login: "mini256",
+          },
+        },
+        last_comment_author: {
+          login: "mini256",
+        },
+        last_comment_time: "2020-10-10 10:10:10",
+      });
+
+      expect(saveMock).not.toBeCalled();
+    });
+
+    test("other reviewer leave a comment", async () => {
+      const lastCommentTime = "2020-10-10 10:10:10";
+
+      await pullService.syncOpenPRLastCommentTime({
+        pull: {
+          owner: "pingcap",
+          repo: "tidb",
+          pull_number: 1,
+          user: {
+            login: "mini256",
+          },
+        },
+        last_comment_author: {
+          login: "big1024",
+        },
+        last_comment_time: lastCommentTime,
+      });
+
+      expect(saveMock).toBeCalled();
+      const statusBeSaved = saveMock.mock.calls[0][0];
+      expect(statusBeSaved.lastCommentAt).toBe(lastCommentTime);
+    });
+
+    afterEach(() => {
       saveMock.mockClear();
     });
   });

@@ -91,19 +91,17 @@ export = async (app: Probot) => {
       app.on("pull_request_review", async (context) => {
         await handlePullRequestReviewEvent(
           context,
-          Container.get(ICommentServiceToken)
+          Container.get(ICommentServiceToken),
+          Container.get(IPullServiceToken)
         );
       });
 
       app.on("pull_request_review_comment", async (context) => {
         await handlePullRequestReviewCommentEvent(
           context,
-          Container.get(ICommentServiceToken)
+          Container.get(ICommentServiceToken),
+          Container.get(IPullServiceToken)
         );
-      });
-
-      app.on("push", async (context) => {
-        console.log("push", context);
       });
 
       app.on("issues", async (context) => {
@@ -113,7 +111,8 @@ export = async (app: Probot) => {
       app.on("issue_comment", async (context) => {
         await handleIssueCommentEvent(
           context,
-          Container.get(ICommentServiceToken)
+          Container.get(ICommentServiceToken),
+          Container.get(IPullServiceToken)
         );
       });
     })

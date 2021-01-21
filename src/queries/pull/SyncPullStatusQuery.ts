@@ -1,8 +1,13 @@
 export interface SyncPullStatusQuery {
-  owner: string;
-  repo: string;
-  pull_number: number;
-  updated_at: string;
+  pull: {
+    owner: string;
+    repo: string;
+    pull_number: number;
+    updated_at: string;
+    user: {
+      login: string;
+    } | null;
+  };
   comments: {
     id: number;
     user: {
@@ -11,8 +16,6 @@ export interface SyncPullStatusQuery {
     body?: string;
     created_at: string;
     updated_at: string;
-    author_association: string;
-    html_url: string;
   }[];
   reviews: {
     id: number;
@@ -20,9 +23,7 @@ export interface SyncPullStatusQuery {
       login: string;
     } | null;
     body: string;
-    html_url: string;
     submitted_at?: string;
-    author_association: string;
   }[];
   review_comments: {
     id: number;
@@ -30,9 +31,15 @@ export interface SyncPullStatusQuery {
       login: string;
     } | null;
     body: string;
-    html_url: string;
     created_at: string;
     updated_at: string;
-    author_association: string;
+  }[];
+  commits: {
+    commit: {
+      committer: {
+        name?: string;
+        date?: string;
+      } | null;
+    };
   }[];
 }

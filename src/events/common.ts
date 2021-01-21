@@ -99,3 +99,15 @@ export async function getPullRequestPatch(
     return null;
   }
 }
+
+/**
+ * Fetch commits of pull request.
+ * @param github
+ * @param pullKey
+ */
+export async function fetchPullRequestCommits(
+  pullKey: PullKey,
+  github: InstanceType<typeof ProbotOctokit>
+) {
+  return await github.paginate(github.pulls.listCommits, pullKey);
+}
