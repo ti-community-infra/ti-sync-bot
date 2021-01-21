@@ -20,55 +20,59 @@ export async function handlePullRequestEvent(
   const { action, pull_request: pullRequest } = context.payload;
   const pullKey = context.pullRequest();
 
-  // Sync pull request.
-  if (
-    action === "opened" ||
-    action === "edited" ||
-    action === "reopened" ||
-    action === "closed" ||
-    action === "labeled" ||
-    action === "unlabeled"
-  ) {
-    await pullService.syncPullRequest({
-      ...context.repo(),
-      ...pullRequest,
-    });
-  }
-
-  // Sync the last commit time of pull request When new code is committed.
-  if (action === "opened" || action === "synchronize") {
-    await pullService.syncOpenPRLastCommitTime({
-      pull: pullKey,
-      last_commit_time: pullRequest.updated_at,
-    });
-  }
-
-  // TODO: Avoid repeated processing contributor email when pr merged.
-  // Sync contributor email when pull request is merged.
-  if (action === "closed" && pullRequest.merged_at !== null) {
-    const patch = await getPullRequestPatch(pullKey, context.octokit);
-
-    if (patch !== null) {
-      await contributorService.syncContributorEmailFromPR({
-        contributor_login: pullRequest.user.login,
-        pull_request_patch: patch,
+  switch (action) {
+    case "opened":
+    case "edited":
+    case "reopened":
+    case "closed":
+    case "labeled":
+    case "unlabeled":
+      // Sync pull request.
+      await pullService.syncPullRequest({
+        ...context.repo(),
+        ...pullRequest,
       });
-    }
-  }
 
-  // Notice: All actions of pull_request event will change the PR update time, but
-  // the PR update time of the following actions have been updated in the previous code.
-  if (
-    action !== "opened" &&
-    action !== "edited" &&
-    action !== "reopened" &&
-    action !== "labeled" &&
-    action !== "unlabeled"
-  ) {
-    await pullService.syncPullRequestUpdateTime(
-      pullKey,
-      pullRequest.updated_at
-    );
+      // Sync the last commit time of pull request When new code is committed.
+      if (action === "opened") {
+        await pullService.syncOpenPRLastCommitTime({
+          pull: pullKey,
+          last_commit_time: pullRequest.updated_at,
+        });
+      }
+
+      // TODO: Avoid repeated processing contributor email when pr merged.
+      // Sync contributor email when pull request is merged.
+      if (action === "closed" && pullRequest.merged_at !== null) {
+        const patch = await getPullRequestPatch(pullKey, context.octokit);
+
+        if (patch !== null) {
+          await contributorService.syncContributorEmailFromPR({
+            contributor_login: pullRequest.user.login,
+            pull_request_patch: patch,
+          });
+        }
+      }
+
+      break;
+    case "synchronize":
+      await pullService.syncOpenPRLastCommitTime({
+        pull: pullKey,
+        last_commit_time: pullRequest.updated_at,
+      });
+
+      await pullService.syncPullRequestUpdateTime(
+        pullKey,
+        pullRequest.updated_at
+      );
+
+      break;
+    default:
+      await pullService.syncPullRequestUpdateTime(
+        pullKey,
+        pullRequest.updated_at
+      );
+      break;
   }
 }
 
