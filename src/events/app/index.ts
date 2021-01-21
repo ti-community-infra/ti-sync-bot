@@ -5,7 +5,6 @@ import { IPullService } from "../../services/PullService";
 import { ICommentService } from "../../services/CommentService";
 import { IIssueService } from "../../services/IssueService";
 import { IContributorService } from "../../services/ContributorService";
-import { sleep } from "../../utils/util";
 
 import { RepoKey } from "../../common/types";
 import {
@@ -251,10 +250,6 @@ async function handleSyncPulls(
         });
       }
     }
-
-    // TODO: Optimize the sleep time.
-    // In order to avoid frequent access to the API.
-    await sleep(500);
   }
 }
 
@@ -311,9 +306,6 @@ async function handleSyncIssues(
         comments: comments,
       });
     }
-
-    // In order to avoid frequent access to the API.
-    await sleep(500);
   }
 }
 
