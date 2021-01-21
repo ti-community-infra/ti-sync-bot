@@ -31,13 +31,14 @@ Bot 通过监听以下类型事件来对 Github 数据进行增量同步：
 | 事件类型          | 动作类型      | 触发行为     |
 | --------------- | ----------- | ----------- |
 | `issue`         | `opened` `edited` `deleted` `closed` `reopened` `labeled` `unlabeled`  | 同步 Issue                             |
-| `issue_comment` | `created` `edited` `deleted`                                           | 同步 Issue Comment、PR 最后评论时间      |
+|                 | 除了需要经过同步 Issue 处理的其它 Action                                   | 只同步 Issue 更新时间                     |
+| `issue_comment` | `created` `edited`                                                     | 同步 Issue Comment、同步 Issue 更新时间、同步 PR 更新时间、同步 PR 最后评论时间  |
 | `pull_request`  | `opened` `closed` `edited` `reopened` `labeled` `unlabeled`            | 同步 Pull Request                      |
-| `pull_request`  | `opened` `synchronize`                                                 | 同步 PR 最后提交时间                     |
-| `pull_request`  | `closed`（merge 操作）                                                  | 同步 Contributor Email                 |
-| `pull_request`  | 除了需要经过同步 Pull Request 处理的其它 Action                            | 同步 PR 更新时间                        |
-| `pull_request_review`         | `submitted` `edited` `dismissed`                         | 同步 Review、PR 最后评审时间             |
-| `pull_request_review_comment` | `created` `edited` `deleted`                             | 同步 Review Comment、PR 最后评论时间     |
+|                 | `opened` `synchronize`                                                 | 同步 PR 最后提交时间                     |
+|                 | `closed`（merge 操作）                                                  | 同步 Contributor Email                 |
+|                 | 除了需要经过同步 Pull Request 处理的其它 Action                            | 只同步 PR 更新时间                        |
+| `pull_request_review` | `submitted` `edited`                                             | 同步 Review、PR 最后评审时间             |
+| `pull_request_review_comment` | `created` `edited`                                       | 同步 Review Comment、同步 PR 更新时间、PR 最后评论时间     |
 
 ## 同步内容
 

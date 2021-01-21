@@ -10,6 +10,7 @@ import { sleep } from "../../utils/util";
 import { RepoKey } from "../../common/types";
 import {
   fetchAllTypeComments,
+  fetchIssueComments,
   fetchPullRequestCommits,
   getPullRequestPatch,
   getSyncRepositoryListFromEnv,
@@ -46,8 +47,8 @@ export async function handleAppStartUpEvent(
       repoConfig,
       github,
       pullService,
-      commentService,
-      issueService
+      issueService,
+      commentService
     );
   }
 
@@ -85,8 +86,8 @@ export async function handleAppInstallOnAccountEvent(
       repoConfig,
       context.octokit,
       pullService,
-      commentService,
-      issueService
+      issueService,
+      commentService
     );
   }
 
@@ -128,8 +129,8 @@ export async function handleAppInstallOnRepoEvent(
       repoConfig,
       context.octokit,
       pullService,
-      commentService,
-      issueService
+      issueService,
+      commentService
     );
   }
 
@@ -152,12 +153,24 @@ async function handleSyncRepo(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
-  commentService: ICommentService,
-  issueService: IIssueService
+  issueService: IIssueService,
+  commentService: ICommentService
 ) {
-  await handleSyncPulls(repoKey, github, pullService, commentService);
+  const syncPullPromise = handleSyncPulls(
+    repoKey,
+    github,
+    pullService,
+    commentService
+  );
+  const syncIssuePromise = handleSyncIssues(
+    repoKey,
+    github,
+    issueService,
+    commentService
+  );
 
-  await handleSyncIssues(repoKey, github, issueService);
+  // Sync pull and sync issue proceed concurrently.
+  await Promise.all([syncPullPromise, syncIssuePromise]);
 }
 
 /**
@@ -241,7 +254,7 @@ async function handleSyncPulls(
 
     // TODO: Optimize the sleep time.
     // In order to avoid frequent access to the API.
-    await sleep(1000);
+    await sleep(500);
   }
 }
 
@@ -250,11 +263,13 @@ async function handleSyncPulls(
  * @param repoKey
  * @param github
  * @param issueService
+ * @param commentService
  */
 async function handleSyncIssues(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
-  issueService: IIssueService
+  issueService: IIssueService,
+  commentService: ICommentService
 ) {
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
@@ -272,17 +287,33 @@ async function handleSyncIssues(
   // Handle issues in pagination mode.
   for await (const res of issueIterator) {
     for (let issue of res.data) {
+      const issueKey = {
+        ...repoKey,
+        issue_number: issue.number,
+      };
+
+      // Ignore pull request.
+      if (issue.pull_request) {
+        continue;
+      }
+
       // Sync issue.
       await issueService.syncIssue({
         ...repoKey,
         ...issue,
       });
 
-      // TODO: Sync issue comment.
+      const comments = await fetchIssueComments(issueKey, github);
+
+      // Sync issue comment.
+      await commentService.syncIssueComments({
+        issue: issueKey,
+        comments: comments,
+      });
     }
 
     // In order to avoid frequent access to the API.
-    await sleep(1000);
+    await sleep(500);
   }
 }
 

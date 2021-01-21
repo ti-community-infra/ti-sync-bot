@@ -15,6 +15,7 @@ export async function handleIssueEvent(
   issueService: IIssueService
 ) {
   const { action, issue } = context.payload;
+  const issueKey = context.issue();
 
   switch (action) {
     case "opened":
@@ -29,8 +30,8 @@ export async function handleIssueEvent(
         ...issue,
       });
       break;
-    // Notice: Other events of the issue will not change the data we need
-    // to collect, but will modify the update event.
+    default:
+      await issueService.syncIssueUpdateTime(issueKey, issue.updated_at);
   }
 }
 
@@ -40,27 +41,27 @@ export async function handleIssueEvent(
  * @param context
  * @param commentService
  * @param pullService
+ * @param issueService
  */
 export async function handleIssueCommentEvent(
   context: Context<EventPayloads.WebhookPayloadIssueComment>,
   commentService: ICommentService,
-  pullService: IPullService
+  pullService: IPullService,
+  issueService: IIssueService
 ) {
   const { action, comment, issue } = context.payload;
+  const pullKey = context.pullRequest();
+  const issueKey = context.issue();
 
   switch (action) {
     case "created":
     case "edited":
-    case "deleted":
-      const pullKey = context.pullRequest();
-
-      // Handle pull request comment.
       if (pullKey && pullKey.pull_number != undefined) {
+        // Handle pull request comment.
         await commentService.syncPullRequestComment({
           ...pullKey,
           ...comment,
         });
-
         await pullService.syncOpenPRLastCommentTime({
           pull: {
             ...pullKey,
@@ -69,11 +70,15 @@ export async function handleIssueCommentEvent(
           last_comment_author: comment.user,
           last_comment_time: comment.updated_at,
         });
-
         await pullService.syncPullRequestUpdateTime(pullKey, issue.updated_at);
+      } else {
+        // Handle issue comment.
+        await commentService.syncIssueComment({
+          ...issueKey,
+          ...comment,
+        });
+        await issueService.syncIssueUpdateTime(issueKey, issue.updated_at);
       }
-
-      // TODO: Incremental sync for issue comment.
 
       break;
   }

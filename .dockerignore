@@ -3,6 +3,7 @@
 **/README.md
 **/LICENSE
 **/.vscode
+**/.idea
 **/npm-debug.log
 **/coverage
 **/.env
