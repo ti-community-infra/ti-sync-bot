@@ -112,7 +112,8 @@ export = async (app: Probot) => {
         await handleIssueCommentEvent(
           context,
           Container.get(ICommentServiceToken),
-          Container.get(IPullServiceToken)
+          Container.get(IPullServiceToken),
+          Container.get(IIssueServiceToken)
         );
       });
     })

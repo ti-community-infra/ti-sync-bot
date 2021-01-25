@@ -15,6 +15,7 @@ export const IIssueServiceToken = new Token<IIssueService>();
 
 export interface IIssueService {
   syncIssue(query: SyncIssueQuery): Promise<void>;
+  syncIssueUpdateTime(issueKey: IssueKey, updateTime: string): Promise<void>;
 }
 
 @Service(IIssueServiceToken)
@@ -129,6 +130,22 @@ export class IssueService implements IIssueService {
   ): boolean {
     return time(issueReceived.updated_at).laterThan(
       time(issueStored.updatedAt)
+    );
+  }
+
+  /**
+   * Sync update time of issue.
+   */
+  async syncIssueUpdateTime(issueKey: IssueKey, updateTime: string) {
+    await this.issueRepository.update(
+      {
+        owner: issueKey.owner,
+        repo: issueKey.repo,
+        issueNumber: issueKey.issue_number,
+      },
+      {
+        updatedAt: updateTime,
+      }
     );
   }
 }

@@ -33,7 +33,7 @@ export async function handlePullRequestEvent(
         ...pullRequest,
       });
 
-      // Sync the last commit time of pull request When new code is committed.
+      // Sync the last commit time of pull request When PR opened.
       if (action === "opened") {
         await pullService.syncOpenPRLastCommitTime({
           pull: pullKey,
@@ -56,16 +56,15 @@ export async function handlePullRequestEvent(
 
       break;
     case "synchronize":
+      // Sync the last commit time of pull request When new code is committed.
       await pullService.syncOpenPRLastCommitTime({
         pull: pullKey,
         last_commit_time: pullRequest.updated_at,
       });
-
       await pullService.syncPullRequestUpdateTime(
         pullKey,
         pullRequest.updated_at
       );
-
       break;
     default:
       await pullService.syncPullRequestUpdateTime(
@@ -94,7 +93,6 @@ export async function handlePullRequestReviewEvent(
   switch (action) {
     case "submitted":
     case "edited":
-    case "dismissed":
       await commentService.syncPullRequestReview({
         ...context.pullRequest(),
         // TODO: Patch the review update time.
@@ -135,23 +133,19 @@ export async function handlePullRequestReviewCommentEvent(
   switch (action) {
     case "created":
     case "edited":
-    case "deleted":
       await commentService.syncPullRequestReviewComment({
         ...pullKey,
         ...comment,
       });
-
       await pullService.syncOpenPRLastCommentTime({
         pull: context.pullRequest(),
         last_comment_time: comment.updated_at,
         last_comment_author: comment.user,
       });
-
       await pullService.syncPullRequestUpdateTime(
         pullKey,
         pull_request.updated_at
       );
-
       break;
   }
 }

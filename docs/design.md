@@ -8,7 +8,7 @@ ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 Github 上的一�
 
 全量同步的设计目的是为了让 Bot 能够将新安装仓库中过去的数据或者在 Bot 因为故障导致的停机过程中产生的数据同步到数据库当中。
 
-| 事件名称                         | 事件类型     | 触发说明                                   |
+| 事件名称                         | 事件类型     | 触发说明                                     |
 | ------------------------------- | ----------- | ----------------------------------------- |
 | app.start_up                    | 自定义事件    | 在程序启动时触发，Bot 会获取所有安装了该 Github App 的仓库列表逐一进行全量同步。 |
 | installation.created            | WebHook 事件 | 当用户初次将 Bot 安装到用户账号或组织账号时触发，用户在安装时可以选择安装到所有仓库或指定仓库，Bot 会针对安装的仓库进行逐一全量同步。 |
@@ -19,6 +19,8 @@ ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 Github 上的一�
 ```
 SYNC_REPOS=tikv/tikv,pingcap/tipocket
 ```
+
+在全量同步过程当中，同步 Pull Request 和 同步 Issue 两个过程并发进行，同步 Contributor Email 的过程依赖于同步 PR 的数据，因此会在同步 Pull Request 完成之后执行。
 
 ### 增量同步
 
@@ -31,13 +33,14 @@ Bot 通过监听以下类型事件来对 Github 数据进行增量同步：
 | 事件类型          | 动作类型      | 触发行为     |
 | --------------- | ----------- | ----------- |
 | `issue`         | `opened` `edited` `deleted` `closed` `reopened` `labeled` `unlabeled`  | 同步 Issue                             |
-| `issue_comment` | `created` `edited` `deleted`                                           | 同步 Issue Comment、PR 最后评论时间      |
+|                 | 除了需要经过同步 Issue 处理的其它 Action                                   | 只同步 Issue 更新时间                   |
+| `issue_comment` | `created` `edited`                                                     | 同步 Issue Comment、同步 Issue 更新时间、同步 PR 更新时间、同步 PR 最后评论时间  |
 | `pull_request`  | `opened` `closed` `edited` `reopened` `labeled` `unlabeled`            | 同步 Pull Request                      |
-| `pull_request`  | `opened` `synchronize`                                                 | 同步 PR 最后提交时间                     |
-| `pull_request`  | `closed`（merge 操作）                                                  | 同步 Contributor Email                 |
-| `pull_request`  | 除了需要经过同步 Pull Request 处理的其它 Action                            | 同步 PR 更新时间                        |
-| `pull_request_review`         | `submitted` `edited` `dismissed`                         | 同步 Review、PR 最后评审时间             |
-| `pull_request_review_comment` | `created` `edited` `deleted`                             | 同步 Review Comment、PR 最后评论时间     |
+|                 | `opened` `synchronize`                                                 | 同步 PR 最后提交时间                     |
+|                 | `closed`（merge 操作）                                                  | 同步 Contributor Email                 |
+|                 | 除了需要经过同步 Pull Request 处理的其它 Action                            | 只同步 PR 更新时间                      |
+| `pull_request_review`         | `submitted` `edited`                                     | 同步 Review、PR 最后评审时间             |
+| `pull_request_review_comment` | `created` `edited`                                       | 同步 Review Comment、同步 PR 更新时间、PR 最后评论时间     |
 
 ## 同步内容
 
@@ -60,13 +63,13 @@ Bot 会将处于 open 状态的 Pull Request 的相关状态信息同步到数�
 
 对于最后评审时间，Bot 会从 PR 的 Review 列表当中选取最晚的提交时间作为最后评审时间；
 
-对于最后评论时间，Bot 会从 PR 的 Issue Comment 列表和 Review Comment 列表当中选择最晚的评论更新时间作为最后评论时间，需要注意的是，PR 作者的评论操作不会影响该最后评论时间发生改变。
+对于最后评论时间，Bot 会从 PR 的 Issue Comment 列表和 Review Comment 列表当中选择最晚的评论更新时间作为最后评论时间，需要注意的是，PR 作者的评论操作不会引起该最后评论时间发生改变。
 
 ### 同步 Comment
 
 目前，Bot 会对 `common comment`、`review` 和 `review comment` 三种类型的评论进行同步。
 
-`common comment` 指的是 Pull Request 与 Issue 共用的一种评论类型，可以通过 [issues.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/issues#list-issue-comments) 接口获取 PR 的 comment 列表。
+`common comment` 指的是 Pull Request 与 Issue 共用的一种评论类型，可以通过 [issues.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/issues#list-issue-comments) 接口获取 PR 或 Issue 的 comment 列表。
 
 `review` 指的是 reviewer 在提交 review 时填写的评论内容，可以通过 [pulls.listReviews](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-reviews-for-a-pull-request) 接口获取 PR 的 review 列表。
 

@@ -20,7 +20,7 @@ describe("Test for IssueService", () => {
     typeorm.createConnection = jest.fn().mockResolvedValue(null);
   });
 
-  describe("Test for syncIssueRequest", () => {
+  describe("Test for syncIssue", () => {
     let findOneMock: jest.SpyInstance;
     let saveMock: jest.SpyInstance;
 

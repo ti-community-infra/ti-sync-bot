@@ -14,20 +14,27 @@ import { SyncCommentQuery } from "../queries/comment/SyncCommentQuery";
 import { SyncPullReviewQuery } from "../queries/comment/SyncPullReviewQuery";
 import { SyncPullCommentQuery } from "../queries/comment/SyncPullCommentQuery";
 import { SyncPullReviewCommentQuery } from "../queries/comment/SyncPullReviewCommentQuery";
+import { SyncIssueCommentsQuery } from "../queries/comment/SyncIssueCommentsQuery";
+import { SyncIssueCommentQuery } from "../queries/comment/SyncIssueCommentQuery";
 
 export const ICommentServiceToken = new Token<ICommentService>();
 
 export interface ICommentService {
   syncPullRequestReviews(query: SyncPullReviewsQuery): Promise<void>;
   syncPullRequestReview(query: SyncPullReviewQuery): Promise<void>;
+
   syncPullRequestComments(query: SyncPullCommentsQuery): Promise<void>;
   syncPullRequestComment(query: SyncPullCommentQuery): Promise<void>;
+
   syncPullRequestReviewComments(
     query: SyncPullReviewCommentsQuery
   ): Promise<void>;
   syncPullRequestReviewComment(
     query: SyncPullReviewCommentQuery
   ): Promise<void>;
+
+  syncIssueComments(query: SyncIssueCommentsQuery): Promise<void>;
+  syncIssueComment(query: SyncIssueCommentQuery): Promise<void>;
 }
 
 @Service(ICommentServiceToken)
@@ -109,6 +116,33 @@ export class CommentService implements ICommentService {
   async syncPullRequestComment(query: SyncPullCommentQuery) {
     let commentReceived: SyncCommentQuery = {
       ...query,
+      comment_type: CommentType.COMMON_COMMENT,
+      body: query.body || "",
+    };
+
+    await this.syncComment(commentReceived);
+  }
+
+  /**
+   * Handle common comments of an issue.
+   * @param query
+   */
+  async syncIssueComments(query: SyncIssueCommentsQuery) {
+    const { issue, comments } = query;
+
+    comments.forEach((comment) => {
+      this.syncIssueComment({
+        ...issue,
+        ...comment,
+      });
+    });
+  }
+
+  async syncIssueComment(query: SyncIssueCommentQuery) {
+    let commentReceived: SyncCommentQuery = {
+      ...query,
+      // Notice: Convert issue_number to pull_number to store in the pull_number field in the database.
+      pull_number: query.issue_number,
       comment_type: CommentType.COMMON_COMMENT,
       body: query.body || "",
     };

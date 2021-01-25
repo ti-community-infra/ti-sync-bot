@@ -1,5 +1,5 @@
 import { Probot, ProbotOctokit } from "probot";
-import { PullKey, pullKey2IssueKey, RepoKey } from "../common/types";
+import { IssueKey, PullKey, pullKey2IssueKey, RepoKey } from "../common/types";
 
 /**
  * Get all the repositories where bots are installed.
@@ -110,4 +110,16 @@ export async function fetchPullRequestCommits(
   github: InstanceType<typeof ProbotOctokit>
 ) {
   return await github.paginate(github.pulls.listCommits, pullKey);
+}
+
+/**
+ * Fetch issue comment.
+ * @param github
+ * @param issueKey
+ */
+export async function fetchIssueComments(
+  issueKey: IssueKey,
+  github: InstanceType<typeof ProbotOctokit>
+) {
+  return await github.paginate(github.issues.listComments, issueKey);
 }
