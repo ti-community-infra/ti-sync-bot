@@ -24,17 +24,26 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm run lint && npm test
-    - name: codecov
-      run: npx codecov
-      # run codecov only once
-      if: matrix.os == 'ubuntu-latest' && matrix.node-version == '12.x'
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      -
+        name: Install dependencies
+        run: npm ci
+      -
+        name: Build project
+        run: npm run build --if-present
+      -
+        name: Run test
+        run: npm run lint && npm test
+      -
+        name: Coverage report
+        run: npx codecov
+        # run codecov only once
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '12.x'
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

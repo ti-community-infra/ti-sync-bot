@@ -11,6 +11,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 RUN npm cache clean --force
 COPY --from=build /usr/src/app/lib lib
+COPY ormconfig.js ./
 
-ENV NODE_ENV="production"
+EXPOSE 3000
 CMD [ "npm", "start" ]
