@@ -6,13 +6,35 @@ on:
       - 'v*.*.*'
 
 jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+        -
+          name: Checkout
+          uses: actions/checkout@v2
+        -
+          name: Setup Node.js
+          uses: actions/setup-node@v2
+          with:
+            node-version: 12
+        - name: Cache NPM dependencies
+          uses: actions/cache@v2
+          with:
+            path: ~/.npm
+            key: ${{ runner.OS }}-npm-cache-${{ hashFiles('**/package-lock.json') }}
+            restore-keys: |
+              ${{ runner.OS }}-npm-cache-
+        - name: Install dependencies
+          run: npm ci
+        - name: Build project
+          run: npm run build
   publish:
     name: Publish
     runs-on: ubuntu-18.04
+    needs:
+      - build
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v2
       # Generate image tag name, one is with the version number, the other is the latest version.
       -
         name: Docker meta
@@ -20,7 +42,7 @@ jobs:
         uses: crazy-max/ghaction-docker-meta@v1
         with:
           images: miniant/ti-sync-bot
-      # The v2 version of docker/build-push-action uses Docker Buildx.
+      # The v2 version of docker/build-push-action uses Docker Buildx to build.
       -
         name: Docker Setup Buildx
         uses: docker/setup-buildx-action@v1.1.1
@@ -49,8 +71,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
         env:
-          # Notice: Do not use the built-in GITHUB_TOKEN, as this will cause the events of other workflows that cannot be triggered.
-          GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Image digest
         run:
