@@ -6,6 +6,7 @@ type: Opaque
 data:
   # Fill in your own configuration and use base64 for encoding and paste it here.
   app_id:
-  private_key:
+  private_key.pem:
   webhook_secret:
   github_token:
+
