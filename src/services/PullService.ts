@@ -16,6 +16,7 @@ import { SyncPullLastCommentQuery } from "../queries/pull/SyncPullLastCommentQue
 import { SyncPullLastReviewQuery } from "../queries/pull/SyncPullLastReviewQuery";
 import { SyncPullLastCommitQuery } from "../queries/pull/SyncPullLastCommitQuery";
 
+export const LGTM_REGEX = /^\/lgtm\s*$/;
 export const IPullServiceToken = new Token<IPullService>();
 
 export interface IPullService {
@@ -223,6 +224,14 @@ export class PullService implements IPullService {
 
       if (time(issueComment.updated_at).laterThan(time(lastCommentTime))) {
         lastCommentTime = issueComment.updated_at;
+      }
+
+      if (
+        issueComment.body !== undefined &&
+        LGTM_REGEX.test(issueComment.body) &&
+        time(issueComment.updated_at).laterThan(time(lastReviewTime))
+      ) {
+        lastReviewTime = issueComment.updated_at;
       }
     }
 

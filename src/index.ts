@@ -118,7 +118,7 @@ export = async (app: Probot) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
       app.log.error("Failed to connect database", err);
     });
 

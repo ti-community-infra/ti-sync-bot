@@ -44,7 +44,7 @@ jobs:
         id: docker_meta
         uses: crazy-max/ghaction-docker-meta@v1
         with:
-          images: miniant/ti-sync-bot
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/ti-sync-bot
       # The v2 version of docker/build-push-action uses Docker Buildx to build.
       -
         name: Docker Setup Buildx

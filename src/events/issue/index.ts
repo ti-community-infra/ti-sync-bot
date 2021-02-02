@@ -2,7 +2,7 @@ import { Context } from "probot";
 import { IIssueService } from "../../services/IssueService";
 import { ICommentService } from "../../services/CommentService";
 import { EventPayloads } from "@octokit/webhooks";
-import { IPullService } from "../../services/PullService";
+import { IPullService, LGTM_REGEX } from "../../services/PullService";
 
 /**
  * Handle issue event.
@@ -62,14 +62,26 @@ export async function handleIssueCommentEvent(
           ...pullKey,
           ...comment,
         });
+
+        // Sync pull request last comment time.
         await pullService.syncOpenPRLastCommentTime({
           pull: {
             ...pullKey,
-            ...issue,
+            user: issue.user,
           },
           last_comment_author: comment.user,
           last_comment_time: comment.updated_at,
         });
+
+        // Handle comment like "/lgtm", such comments will be treated as reviews.
+        if (LGTM_REGEX.test(comment.body)) {
+          await pullService.syncOpenPRLastReviewTime({
+            pull: pullKey,
+            last_review_time: comment.updated_at,
+          });
+        }
+
+        // Sync pull request update time.
         await pullService.syncPullRequestUpdateTime(pullKey, issue.updated_at);
       } else {
         // Handle issue comment.
