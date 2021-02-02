@@ -1,6 +1,12 @@
 # ti-sync-bot
 
-A GitHub App built with [Probot](https://github.com/probot/probot) that used to sync tidb community info to database, for providing basic data for other bots.
+[![GitHub Actions](https://github.com/ti-community-infra/ti-sync-bot/workflows/Test/badge.svg?branch=main)](https://github.com/features/actions)
+[![codecov](https://codecov.io/gh/ti-community-infra/ti-sync-bot/branch/main/graph/badge.svg)](https://codecov.io/gh/ti-community-infra/ti-sync-bot)
+[![Probot](https://badgen.net/badge/built%20with/probot/orange?icon=dependabot&cache=86400)](https://probot.github.io/)
+[![jest](https://facebook.github.io/jest/img/jest-badge.svg)](https://github.com/facebook/jest)
+[![ISC License](https://badgen.net/badge/license/ISC/blue)](https://ti-community-infra.isc-license.org)
+
+🤖 A GitHub App built with [Probot](https://github.com/probot/probot) that used to sync tidb community info to database, for providing basic data for other bots.
 
 ## Require
 
