@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ti-sync-bot
-          image: miniant/ti-sync-bot:latest
+          image: rustinliu/ti-sync-bot:latest
           ports:
             - containerPort: 3000
               protocol: TCP
