@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: ti-sync-bot
-          image: rustinliu/ti-sync-bot:latest
+          image: rustinliu/ti-sync-bot:v1.0.3
           ports:
             - containerPort: 3000
               protocol: TCP
@@ -26,19 +26,19 @@ spec:
             - name: APP_ID
               valueFrom:
                 secretKeyRef:
-                  name: app-config
+                  name: ti-sync-bot-config
                   key: app_id
             - name: PRIVATE_KEY_PATH
-              value: /etc/app-config/private_key.pem
+              value: /etc/ti-sync-bot-config/private_key.pem
             - name: WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: app-config
+                  name: ti-sync-bot-config
                   key: webhook_secret
             - name: GITHUB_ACCESS_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: app-config
+                  name: ti-sync-bot-config
                   key: github_token
             # Database config
             - name: BOT_DB_HOST
@@ -67,10 +67,10 @@ spec:
                   name: database-config
                   key: database_name
           volumeMounts:
-            - name: app-config-volume
-              mountPath: /etc/app-config
+            - name: ti-sync-bot-config-volume
+              mountPath: /etc/ti-sync-bot-config
               readOnly: true
       volumes:
-        - name: app-config-volume
+        - name: ti-sync-bot-config-volume
           secret:
-            secretName: app-config
+            secretName: ti-sync-bot-config

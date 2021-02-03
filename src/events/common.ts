@@ -85,14 +85,21 @@ export async function getPullRequestPatch(
   pullKey: PullKey,
   github: InstanceType<typeof ProbotOctokit>
 ): Promise<string | null> {
-  const patchResponse = await github.pulls.get({
-    ...pullKey,
-    headers: {
-      Accept: "application/vnd.github.VERSION.patch",
-    },
-  });
+  let patchResponse;
 
-  if (patchResponse.status === 200) {
+  try {
+    patchResponse = await github.pulls.get({
+      ...pullKey,
+      headers: {
+        Accept: "application/vnd.github.VERSION.patch",
+      },
+    });
+  } catch (err) {
+    github.log.error("Failed to get patch file of pull request", err);
+    console.error(err);
+  }
+
+  if (patchResponse && patchResponse.status === 200) {
     // Notice: The content of the patch file type is in the form of a string.
     return (patchResponse.data as unknown) as string;
   } else {

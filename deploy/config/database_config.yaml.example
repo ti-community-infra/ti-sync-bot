@@ -3,8 +3,8 @@ kind: Secret
 metadata:
   name: database-config
 type: Opaque
-data:
-  # Fill in your own configuration and use base64 for encoding and paste it here.
+stringData:
+  # Please use double quoted string and break with escape character.
   host:
   port:
   username:
