@@ -14,12 +14,6 @@ ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 Github 上的一�
 | installation.created            | WebHook 事件 | 当用户初次将 Bot 安装到用户账号或组织账号时触发，用户在安装时可以选择安装到所有仓库或指定仓库，Bot 会针对安装的仓库进行逐一全量同步。 |
 | installation_repositories.added | WebHook 事件 | 用户可以在 Github App 设置对已安装仓库进行添加或删除，当新添加一个仓库时，会触发该事件，Bot 会针对新添加的仓库进行逐一全量同步。 |
 
-为了测试方便，如果你在 `.env` 文件当中指定 `SYNC_REPOS` 选项，Bot 在程序启动时将会针对该配置中指定的仓库进行全量同步。配置示例如下：
-
-```
-SYNC_REPOS=tikv/tikv,pingcap/tipocket
-```
-
 在全量同步过程当中，同步 Pull Request 和 同步 Issue 两个过程并发进行，同步 Contributor Email 的过程依赖于同步 PR 的数据，因此会在同步 Pull Request 完成之后执行。
 
 ### 增量同步
