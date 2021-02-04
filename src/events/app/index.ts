@@ -1,4 +1,4 @@
-import { Context, Probot, ProbotOctokit } from "probot";
+import { Context, Logger, Probot, ProbotOctokit } from "probot";
 import { EventPayloads } from "@octokit/webhooks";
 
 import { IPullService } from "../../services/PullService";
@@ -21,16 +21,16 @@ import {
  * @param app
  * @param github
  * @param pullService
- * @param commentService
  * @param issueService
+ * @param commentService
  * @param contributorService
  */
 export async function handleAppStartUpEvent(
   app: Probot,
   github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
-  commentService: ICommentService,
   issueService: IIssueService,
+  commentService: ICommentService,
   contributorService: IContributorService
 ) {
   let repoConfigs: RepoKey[];
@@ -41,37 +41,34 @@ export async function handleAppStartUpEvent(
     repoConfigs = await getSyncRepositoryListFromInstallation(app);
   }
 
-  for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(
-      repoConfig,
-      github,
-      pullService,
-      issueService,
-      commentService
-    );
-  }
-
-  // Notice: Contributor email sync must execute after the pull request sync completed.
-  await handleSyncContributorEmail(github, pullService, contributorService);
+  await handleSyncRepos(
+    repoConfigs,
+    github,
+    app.log,
+    pullService,
+    issueService,
+    commentService,
+    contributorService
+  );
 }
 
 /**
  * handle the event that triggered when the user first installs the bot to the account.
  * @param context
  * @param pullService
- * @param commentService
  * @param issueService
+ * @param commentService
  * @param contributorService
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context<EventPayloads.WebhookPayloadInstallation>,
   pullService: IPullService,
-  commentService: ICommentService,
   issueService: IIssueService,
+  commentService: ICommentService,
   contributorService: IContributorService
 ) {
   const { installation, repositories } = context.payload;
-  const repoConfigs: RepoKey[] = repositories.map(
+  const repoKeys: RepoKey[] = repositories.map(
     (repository: { name: string }) => {
       return {
         owner: installation.account.login,
@@ -80,19 +77,13 @@ export async function handleAppInstallOnAccountEvent(
     }
   );
 
-  for (const repoConfig of repoConfigs) {
-    await handleSyncRepo(
-      repoConfig,
-      context.octokit,
-      pullService,
-      issueService,
-      commentService
-    );
-  }
-
-  await handleSyncContributorEmail(
+  await handleSyncRepos(
+    repoKeys,
     context.octokit,
+    context.log,
     pullService,
+    issueService,
+    commentService,
     contributorService
   );
 }
@@ -102,19 +93,19 @@ export async function handleAppInstallOnAccountEvent(
  * of the account, which has already installed the bot.
  * @param context
  * @param pullService
- * @param commentService
  * @param issueService
+ * @param commentService
  * @param contributorService
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context<EventPayloads.WebhookPayloadInstallationRepositories>,
   pullService: IPullService,
-  commentService: ICommentService,
   issueService: IIssueService,
+  commentService: ICommentService,
   contributorService: IContributorService
 ) {
   const { installation, repositories_added } = context.payload;
-  const repoConfigs: RepoKey[] = repositories_added.map(
+  const repoKeys: RepoKey[] = repositories_added.map(
     (repository: { name: string }) => {
       return {
         owner: installation.account.login,
@@ -123,27 +114,62 @@ export async function handleAppInstallOnRepoEvent(
     }
   );
 
-  for (const repoConfig of repoConfigs) {
+  await handleSyncRepos(
+    repoKeys,
+    context.octokit,
+    context.log,
+    pullService,
+    issueService,
+    commentService,
+    contributorService
+  );
+}
+
+/**
+ * General handling for syncing repositories.
+ * @param repoKeys
+ * @param github
+ * @param log
+ * @param pullService
+ * @param issueService
+ * @param commentService
+ * @param contributorService
+ */
+async function handleSyncRepos(
+  repoKeys: RepoKey[],
+  github: InstanceType<typeof ProbotOctokit>,
+  log: Logger,
+  pullService: IPullService,
+  issueService: IIssueService,
+  commentService: ICommentService,
+  contributorService: IContributorService
+) {
+  for (const repoKey of repoKeys) {
     await handleSyncRepo(
-      repoConfig,
-      context.octokit,
+      repoKey,
+      github,
+      log,
       pullService,
       issueService,
       commentService
     );
   }
 
-  await handleSyncContributorEmail(
-    context.octokit,
-    pullService,
-    contributorService
-  );
+  // Notice: Synchronizing contributor email must be performed after the synchronization PR is completed.
+  await handleSyncContributorEmail(github, log, pullService, contributorService)
+    .then(() => {
+      log.info("Finish syncing contributor email");
+    })
+    .catch((err) => {
+      log.error(err, "Failed to sync contributor email");
+    });
 }
 
 /**
  * General handling for syncing a repository.
  * @param repoKey
  * @param github
+ * @param log
  * @param pullService
  * @param commentService
  * @param issueService
@@ -151,22 +177,43 @@ export async function handleAppInstallOnRepoEvent(
 async function handleSyncRepo(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
+  log: Logger,
   pullService: IPullService,
   issueService: IIssueService,
   commentService: ICommentService
 ) {
+  const { owner, repo } = repoKey;
+  const repoSignature = `${owner}/${repo}`;
+
+  log.info("Syncing repo %s", repoSignature);
+
   const syncPullPromise = handleSyncPulls(
     repoKey,
     github,
+    log,
     pullService,
     commentService
-  );
+  )
+    .then(() => {
+      log.info("Finish syncing pull request of %s", repoSignature);
+    })
+    .catch((err) => {
+      log.error(err, "Failed to sync pull request of %s", repoSignature);
+    });
+
   const syncIssuePromise = handleSyncIssues(
     repoKey,
     github,
+    log,
     issueService,
     commentService
-  );
+  )
+    .then(() => {
+      log.info("Finish syncing issue of %s", repoSignature);
+    })
+    .catch((err) => {
+      log.error(err, "Failed to sync issue of %s", repoSignature);
+    });
 
   // Sync pull and sync issue proceed concurrently.
   await Promise.all([syncPullPromise, syncIssuePromise]);
@@ -176,17 +223,21 @@ async function handleSyncRepo(
  * Handle pull request of a repository.
  * @param repoKey
  * @param github
+ * @param log
  * @param pullService
  * @param commentService
  */
 async function handleSyncPulls(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
+  log: Logger,
   pullService: IPullService,
   commentService: ICommentService
 ) {
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
+
+  log.info("Syncing pull requests of %s", repoSignature);
 
   // Load pull requests in pagination mode.
   const pullIterator = github.paginate.iterator(github.pulls.list, {
@@ -195,8 +246,6 @@ async function handleSyncPulls(
     per_page: 100,
     direction: "asc",
   });
-
-  github.log.info(`syncing pull request from ${repoSignature}`);
 
   // Handle pull requests in pagination mode.
   for await (const res of pullIterator) {
@@ -257,17 +306,21 @@ async function handleSyncPulls(
  * Handle issue of repository.
  * @param repoKey
  * @param github
+ * @param log
  * @param issueService
  * @param commentService
  */
 async function handleSyncIssues(
   repoKey: RepoKey,
   github: InstanceType<typeof ProbotOctokit>,
+  log: Logger,
   issueService: IIssueService,
   commentService: ICommentService
 ) {
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
+
+  log.info("Syncing issue from %s", repoSignature);
 
   // Load issues in pagination mode.
   const issueIterator = github.paginate.iterator(github.issues.listForRepo, {
@@ -276,8 +329,6 @@ async function handleSyncIssues(
     per_page: 100,
     direction: "asc",
   });
-
-  github.log.info(`syncing issue from ${repoSignature}`);
 
   // Handle issues in pagination mode.
   for await (const res of issueIterator) {
@@ -311,16 +362,18 @@ async function handleSyncIssues(
 
 /**
  * Synchronize contributor email according to the patch of pull request.
+ * @param log
  * @param pullService
  * @param contributorService
  * @param github
  */
 async function handleSyncContributorEmail(
   github: InstanceType<typeof ProbotOctokit>,
+  log: Logger,
   pullService: IPullService,
   contributorService: IContributorService
 ) {
-  github.log.info(`syncing contributor email`);
+  log.info("Syncing contributor email");
 
   const noEmailContributorLogins = await contributorService.listNoEmailContributorsLogin();
 
@@ -334,7 +387,7 @@ async function handleSyncContributorEmail(
         pull_number: pull.pullNumber,
       };
 
-      const patch = await getPullRequestPatch(pullKey, github);
+      const patch = await getPullRequestPatch(pullKey, github, log);
 
       if (patch === null) continue;
 
@@ -346,6 +399,4 @@ async function handleSyncContributorEmail(
       if (syncSuccess) break;
     }
   }
-
-  github.log.info(`finish syncing contributor email`);
 }

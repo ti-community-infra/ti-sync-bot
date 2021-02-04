@@ -44,7 +44,11 @@ export async function handlePullRequestEvent(
       // TODO: Avoid repeated processing contributor email when pr merged.
       // Sync contributor email when pull request is merged.
       if (action === "closed" && pullRequest.merged_at !== null) {
-        const patch = await getPullRequestPatch(pullKey, context.octokit);
+        const patch = await getPullRequestPatch(
+          pullKey,
+          context.octokit,
+          context.log
+        );
 
         if (patch !== null) {
           await contributorService.syncContributorEmailFromPR({

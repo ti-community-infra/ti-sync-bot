@@ -47,7 +47,7 @@ export class IssueService implements IIssueService {
 
     // Ignore outdated issue data.
     if (!IssueService.isIssueUpdated(issueReceived, issueStored)) {
-      this.log.info(`sync issue ${issueSignature}, but not updated`);
+      this.log.info("Sync issue %s, but not updated", issueSignature);
       return;
     }
 
@@ -57,9 +57,9 @@ export class IssueService implements IIssueService {
     // Save issue.
     try {
       await this.issueRepository.save(issueBeSaved);
-      this.log.info(`sync issue ${issueSignature} success`);
+      this.log.info("Sync issue %s success", issueSignature);
     } catch (err) {
-      this.log.error(`failed to save issue ${issueSignature}: ${err}`);
+      this.log.error(err, "Failed to save issue %s", issueSignature);
     }
   }
 

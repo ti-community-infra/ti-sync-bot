@@ -166,7 +166,7 @@ export class CommentService implements ICommentService {
 
     // Ignore outdated comment data.
     if (!CommentService.isCommentUpdated(commentReceived, commentStored)) {
-      this.log.info(`sync ${type} ${commentSignature}, but not updated`);
+      this.log.info(`Sync ${type} ${commentSignature}, but not updated`);
       return;
     }
 
@@ -179,9 +179,9 @@ export class CommentService implements ICommentService {
     // Save comment.
     try {
       await this.commentRepository.save(commentBeSaved);
-      this.log.info(`sync ${type} ${commentSignature} success`);
+      this.log.info(`Sync ${type} ${commentSignature} success`);
     } catch (err) {
-      this.log.error(`failed to save ${type} ${commentSignature}: ${err}`);
+      this.log.error(err, `Failed to save ${type} ${commentSignature}`);
     }
   }
 
