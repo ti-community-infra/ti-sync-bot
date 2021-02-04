@@ -34,7 +34,6 @@ export = async (app: Probot) => {
     auth: {
       token: process.env.GITHUB_ACCESS_TOKEN,
     },
-    log: app.log,
   });
 
   // Connect database.
@@ -47,10 +46,16 @@ export = async (app: Probot) => {
         app,
         github,
         Container.get(IPullServiceToken),
-        Container.get(ICommentServiceToken),
         Container.get(IIssueServiceToken),
+        Container.get(ICommentServiceToken),
         Container.get(IContributorServiceToken)
-      ).then(null);
+      )
+        .then(() => {
+          app.log.info("Finish full sync successfully");
+        })
+        .catch((err) => {
+          app.log.error(err, "Failed to finish full sync");
+        });
 
       // Establish WebHook listen.
       // You can learn more about webhook through the following documents:
@@ -60,22 +65,22 @@ export = async (app: Probot) => {
         context.log.info("pong");
       });
 
-      app.on("installation.created", async (context: Context) => {
+      app.on("installation.created", async (context) => {
         await handleAppInstallOnAccountEvent(
           context,
           Container.get(IPullServiceToken),
-          Container.get(ICommentServiceToken),
           Container.get(IIssueServiceToken),
+          Container.get(ICommentServiceToken),
           Container.get(IContributorServiceToken)
         );
       });
 
-      app.on("installation_repositories.added", async (context: Context) => {
+      app.on("installation_repositories.added", async (context) => {
         await handleAppInstallOnRepoEvent(
           context,
           Container.get(IPullServiceToken),
-          Container.get(ICommentServiceToken),
           Container.get(IIssueServiceToken),
+          Container.get(ICommentServiceToken),
           Container.get(IContributorServiceToken)
         );
       });
@@ -118,8 +123,7 @@ export = async (app: Probot) => {
       });
     })
     .catch((err) => {
-      console.log(err);
-      app.log.error("Failed to connect database", err);
+      app.log.error(err, "Failed to connect database");
     });
 
   // For more information on building apps:

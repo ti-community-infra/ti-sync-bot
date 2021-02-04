@@ -69,7 +69,7 @@ export class PullService implements IPullService {
     );
 
     if (!isPRUpdated) {
-      this.log.info(`sync pull request ${pullSignature}, but not updated`);
+      this.log.info("Sync pull request %s, but not updated", pullSignature);
       return;
     }
 
@@ -79,9 +79,9 @@ export class PullService implements IPullService {
     // Save pull.
     try {
       await this.pullRepository.save(pullBeSaved);
-      this.log.info(`sync pull request ${pullSignature} success`);
+      this.log.info("Sync pull request %s success", pullSignature);
     } catch (err) {
-      this.log.error(`failed to sync pull request ${pullSignature}: ${err}`);
+      this.log.error(err, "Failed to sync pull request %s", pullSignature);
     }
   }
 
@@ -294,10 +294,12 @@ export class PullService implements IPullService {
       lastCommitTime?: string;
     }
   ) {
-    let openPRStatusStored = await this.openPRStatusRepository.findOne({
-      owner: pullStatus.owner,
-      repo: pullStatus.repo,
-      pullNumber: pullStatus.pull_number,
+    const { owner, repo, pull_number: pullNumber } = pullStatus;
+    const pullSignature = `${owner}/${repo}#${pullNumber}`;
+    const openPRStatusStored = await this.openPRStatusRepository.findOne({
+      owner: owner,
+      repo: repo,
+      pullNumber: pullNumber,
     });
     let openPRStatusBeSaved = new OpenPRStatus();
 
@@ -327,6 +329,15 @@ export class PullService implements IPullService {
       openPRStatusBeSaved.lastUpdateCodeAt = pullStatus.lastCommitTime;
     }
 
-    await this.openPRStatusRepository.save(openPRStatusBeSaved);
+    try {
+      await this.openPRStatusRepository.save(openPRStatusBeSaved);
+      this.log.info("Sync pull request %s status success", pullSignature);
+    } catch (err) {
+      this.log.error(
+        err,
+        "Failed to save pull request %s status",
+        pullSignature
+      );
+    }
   }
 }

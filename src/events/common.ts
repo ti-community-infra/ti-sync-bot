@@ -1,4 +1,4 @@
-import { Probot, ProbotOctokit } from "probot";
+import { Logger, Probot, ProbotOctokit } from "probot";
 import { IssueKey, PullKey, pullKey2IssueKey, RepoKey } from "../common/types";
 
 /**
@@ -79,20 +79,28 @@ export async function fetchAllTypeComments(
  * Obtain the patch format file of the pull request.
  * @param pullKey
  * @param github
+ * @param log
  * @return The content of path file, return null means fail to obtain.
  */
 export async function getPullRequestPatch(
   pullKey: PullKey,
-  github: InstanceType<typeof ProbotOctokit>
+  github: InstanceType<typeof ProbotOctokit>,
+  log: Logger
 ): Promise<string | null> {
-  const patchResponse = await github.pulls.get({
-    ...pullKey,
-    headers: {
-      Accept: "application/vnd.github.VERSION.patch",
-    },
-  });
+  let patchResponse;
 
-  if (patchResponse.status === 200) {
+  try {
+    patchResponse = await github.pulls.get({
+      ...pullKey,
+      headers: {
+        Accept: "application/vnd.github.VERSION.patch",
+      },
+    });
+  } catch (err) {
+    log.error(err, "Failed to get patch file of pull request.");
+  }
+
+  if (patchResponse?.status === 200) {
     // Notice: The content of the patch file type is in the form of a string.
     return (patchResponse.data as unknown) as string;
   } else {

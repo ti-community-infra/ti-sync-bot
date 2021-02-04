@@ -43,11 +43,13 @@ export class ContributorService implements IContributorService {
     try {
       await this.contributorRepository.updateEmailInfo(login, emailFound);
       this.log.info(
-        `sync contributor ${login} with email ${emailFound} success`
+        "Sync contributor %s with email %s success",
+        login,
+        emailFound
       );
       return true;
     } catch (err) {
-      this.log.error(`failed to sync contributor email ${err}`);
+      this.log.error(err, "Failed to sync contributor email");
       return false;
     }
   }
