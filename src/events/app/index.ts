@@ -195,10 +195,10 @@ async function handleSyncRepo(
     commentService
   )
     .then(() => {
-      log.info("Finish syncing pull request of %s", repoSignature);
+      log.info("Finish syncing pull requests of %s", repoSignature);
     })
     .catch((err) => {
-      log.error(err, "Failed to sync pull request of %s", repoSignature);
+      log.error(err, "Failed to sync pull requests of %s", repoSignature);
     });
 
   const syncIssuePromise = handleSyncIssues(
@@ -209,10 +209,10 @@ async function handleSyncRepo(
     commentService
   )
     .then(() => {
-      log.info("Finish syncing issue of %s", repoSignature);
+      log.info("Finish syncing issues of %s", repoSignature);
     })
     .catch((err) => {
-      log.error(err, "Failed to sync issue of %s", repoSignature);
+      log.error(err, "Failed to sync issues of %s", repoSignature);
     });
 
   // Sync pull and sync issue proceed concurrently.
@@ -320,7 +320,7 @@ async function handleSyncIssues(
   const { owner, repo } = repoKey;
   const repoSignature = `${owner}/${repo}`;
 
-  log.info("Syncing issue from %s", repoSignature);
+  log.info("Syncing issues from %s", repoSignature);
 
   // Load issues in pagination mode.
   const issueIterator = github.paginate.iterator(github.issues.listForRepo, {
