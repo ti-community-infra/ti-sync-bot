@@ -51,7 +51,7 @@ export = async (app: Probot) => {
         Container.get(IContributorServiceToken)
       )
         .then(() => {
-          app.log.info("Finish full sync successfully");
+          app.log.info("Finish full sync success");
         })
         .catch((err) => {
           app.log.error(err, "Failed to finish full sync");
