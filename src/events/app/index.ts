@@ -8,6 +8,7 @@ import { IContributorService } from "../../services/ContributorService";
 
 import { RepoKey } from "../../common/types";
 import {
+  fetchAllInstallations,
   fetchAllTypeComments,
   fetchIssueComments,
   fetchPullRequestCommits,
@@ -19,7 +20,6 @@ import {
 /**
  * Handle the event that triggered when the program start up.
  * @param app
- * @param github
  * @param pullService
  * @param issueService
  * @param commentService
@@ -27,7 +27,6 @@ import {
  */
 export async function handleAppStartUpEvent(
   app: Probot,
-  github: InstanceType<typeof ProbotOctokit>,
   pullService: IPullService,
   issueService: IIssueService,
   commentService: ICommentService,
@@ -43,8 +42,7 @@ export async function handleAppStartUpEvent(
 
   await handleSyncRepos(
     repoConfigs,
-    github,
-    app.log,
+    app,
     pullService,
     issueService,
     commentService,
@@ -55,6 +53,7 @@ export async function handleAppStartUpEvent(
 /**
  * handle the event that triggered when the user first installs the bot to the account.
  * @param context
+ * @param app
  * @param pullService
  * @param issueService
  * @param commentService
@@ -62,6 +61,7 @@ export async function handleAppStartUpEvent(
  */
 export async function handleAppInstallOnAccountEvent(
   context: Context<EventPayloads.WebhookPayloadInstallation>,
+  app: Probot,
   pullService: IPullService,
   issueService: IIssueService,
   commentService: ICommentService,
@@ -79,8 +79,7 @@ export async function handleAppInstallOnAccountEvent(
 
   await handleSyncRepos(
     repoKeys,
-    context.octokit,
-    context.log,
+    app,
     pullService,
     issueService,
     commentService,
@@ -92,6 +91,7 @@ export async function handleAppInstallOnAccountEvent(
  * Handle the event that triggered when the user installs the bot to another new repository
  * of the account, which has already installed the bot.
  * @param context
+ * @param app
  * @param pullService
  * @param issueService
  * @param commentService
@@ -99,6 +99,7 @@ export async function handleAppInstallOnAccountEvent(
  */
 export async function handleAppInstallOnRepoEvent(
   context: Context<EventPayloads.WebhookPayloadInstallationRepositories>,
+  app: Probot,
   pullService: IPullService,
   issueService: IIssueService,
   commentService: ICommentService,
@@ -116,8 +117,7 @@ export async function handleAppInstallOnRepoEvent(
 
   await handleSyncRepos(
     repoKeys,
-    context.octokit,
-    context.log,
+    app,
     pullService,
     issueService,
     commentService,
@@ -126,10 +126,9 @@ export async function handleAppInstallOnRepoEvent(
 }
 
 /**
- * General handling for syncing repositories.
+ * General handling for syncing repositories of all owners.
  * @param repoKeys
- * @param github
- * @param log
+ * @param app
  * @param pullService
  * @param issueService
  * @param commentService
@@ -137,18 +136,23 @@ export async function handleAppInstallOnRepoEvent(
  */
 async function handleSyncRepos(
   repoKeys: RepoKey[],
-  github: InstanceType<typeof ProbotOctokit>,
-  log: Logger,
+  app: Probot,
   pullService: IPullService,
   issueService: IIssueService,
   commentService: ICommentService,
   contributorService: IContributorService
 ) {
   for (const repoKey of repoKeys) {
+    const nonAuthGithub = await app.auth();
+    const { data: installation } = await nonAuthGithub.apps.getRepoInstallation(
+      repoKey
+    );
+    const github = await app.auth(installation.id);
+
     await handleSyncRepo(
       repoKey,
       github,
-      log,
+      app.log,
       pullService,
       issueService,
       commentService
@@ -156,12 +160,12 @@ async function handleSyncRepos(
   }
 
   // Notice: Synchronizing contributor email must be performed after the synchronization PR is completed.
-  await handleSyncContributorEmail(github, log, pullService, contributorService)
+  await handleSyncContributorEmail(app, pullService, contributorService)
     .then(() => {
-      log.info("Finish syncing contributor email");
+      app.log.info("Finish syncing contributor email");
     })
     .catch((err) => {
-      log.error(err, "Failed to sync contributor email");
+      app.log.error(err, "Failed to sync contributor email");
     });
 }
 
@@ -362,19 +366,21 @@ async function handleSyncIssues(
 
 /**
  * Synchronize contributor email according to the patch of pull request.
- * @param log
+ * @param app
  * @param pullService
  * @param contributorService
- * @param github
  */
 async function handleSyncContributorEmail(
-  github: InstanceType<typeof ProbotOctokit>,
-  log: Logger,
+  app: Probot,
   pullService: IPullService,
   contributorService: IContributorService
 ) {
-  log.info("Syncing contributor email");
+  app.log.info("Syncing contributor email");
 
+  // Obtain all installation IDs so that they can be obtained directly according to the owner name.
+  const installationIdMap = await fetchAllInstallations(app);
+
+  // Only contributors who have not recorded their email are traversed.
   const noEmailContributorLogins = await contributorService.listNoEmailContributorsLogin();
 
   for (const login of noEmailContributorLogins) {
@@ -387,7 +393,12 @@ async function handleSyncContributorEmail(
         pull_number: pull.pullNumber,
       };
 
-      const patch = await getPullRequestPatch(pullKey, github, log);
+      // Obtain the github client authorized by the installation id associated with owner name.
+      const installationId = installationIdMap.get(pull.owner);
+      const github = await app.auth(installationId);
+
+      // Obtain the email from the PR's patch format file.
+      const patch = await getPullRequestPatch(pullKey, github, app.log);
 
       if (patch === null) continue;
 
