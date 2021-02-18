@@ -142,8 +142,9 @@ async function handleSyncRepos(
   commentService: ICommentService,
   contributorService: IContributorService
 ) {
+  const octokit = await app.auth();
+
   for (const repoKey of repoKeys) {
-    const octokit = await app.auth();
     const { data: installation } = await octokit.apps.getRepoInstallation(
       repoKey
     );
