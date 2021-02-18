@@ -6,4 +6,4 @@
 
 | 选项                       | 选项说明                                   |
 | ------------------------- | --------------------------------------------------------------------------- |
-| SYNC_REPOS                | 为了测试方便，如果你在 `.env` 文件当中指定 `SYNC_REPOS` 配置，Bot 在程序启动时将会针对该配置中指定的仓库进行全量同步，例如：`SYNC_REPOS=tikv/tikv,pingcap/tipocket`。需要注意的是，指定的仓库必须事先安装该 Github App。 |
+| SYNC_REPOS                | 为了测试方便，如果你在 `.env` 文件当中指定 `SYNC_REPOS` 配置，Bot 在程序启动时将会针对该配置中指定的仓库进行全量同步，例如：`SYNC_REPOS=tikv/tikv,pingcap/tipocket`。需要注意的是，指定的仓库必须事先安装该 GitHub App。 |

@@ -143,8 +143,8 @@ async function handleSyncRepos(
   contributorService: IContributorService
 ) {
   for (const repoKey of repoKeys) {
-    const nonAuthGithub = await app.auth();
-    const { data: installation } = await nonAuthGithub.apps.getRepoInstallation(
+    const octokit = await app.auth();
+    const { data: installation } = await octokit.apps.getRepoInstallation(
       repoKey
     );
     const github = await app.auth(installation.id);
