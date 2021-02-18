@@ -146,9 +146,7 @@ export async function fetchAllInstallations(
   app: Probot
 ): Promise<Map<string, number>> {
   const octokit = await app.auth();
-  const installations = await octokit.paginate(
-    octokit.apps.listInstallations
-  );
+  const installations = await octokit.paginate(octokit.apps.listInstallations);
   const installationIdMap = new Map();
 
   installations.forEach((installation) => {
