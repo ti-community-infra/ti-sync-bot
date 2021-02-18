@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Context, Probot, ProbotOctokit } from "probot";
+import { Context, Probot } from "probot";
 import Container from "typedi";
 import { createConnection, useContainer } from "typeorm";
 
@@ -26,16 +26,6 @@ export = async (app: Probot) => {
   useContainer(Container);
   Container.set(ILoggerToken, app.log);
 
-  // TODO: use the github client authed by installation id.
-  // Init Github client.
-  // Notice: This github client uses a TOKEN as the bot github account for access, in this case, we do not need to
-  // authorize for each installation through the Github APP, but this will also bring some restrictions.
-  const github = new ProbotOctokit({
-    auth: {
-      token: process.env.GITHUB_ACCESS_TOKEN,
-    },
-  });
-
   // Connect database.
   createConnection()
     .then(() => {
@@ -44,7 +34,6 @@ export = async (app: Probot) => {
       // WebHook-based incremental sync, and the two are executed concurrently.
       handleAppStartUpEvent(
         app,
-        github,
         Container.get(IPullServiceToken),
         Container.get(IIssueServiceToken),
         Container.get(ICommentServiceToken),
@@ -68,6 +57,7 @@ export = async (app: Probot) => {
       app.on("installation.created", async (context) => {
         await handleAppInstallOnAccountEvent(
           context,
+          app,
           Container.get(IPullServiceToken),
           Container.get(IIssueServiceToken),
           Container.get(ICommentServiceToken),
@@ -78,6 +68,7 @@ export = async (app: Probot) => {
       app.on("installation_repositories.added", async (context) => {
         await handleAppInstallOnRepoEvent(
           context,
+          app,
           Container.get(IPullServiceToken),
           Container.get(IIssueServiceToken),
           Container.get(ICommentServiceToken),

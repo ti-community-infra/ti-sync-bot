@@ -10,8 +10,8 @@ export async function getSyncRepositoryListFromInstallation(
   app: Probot
 ): Promise<RepoKey[]> {
   const syncRepos: RepoKey[] = [];
-  const github = await app.auth();
-  const { data: installations } = await github.apps.listInstallations();
+  const octokit = await app.auth();
+  const { data: installations } = await octokit.apps.listInstallations();
 
   for (let i of installations) {
     const github = await app.auth(i.id);
@@ -97,7 +97,13 @@ export async function getPullRequestPatch(
       },
     });
   } catch (err) {
-    log.error(err, "Failed to get patch file of pull request.");
+    log.error(
+      err,
+      "Failed to get patch file of pull request %s/%s#%s",
+      pullKey.owner,
+      pullKey.repo,
+      pullKey.pull_number
+    );
   }
 
   if (patchResponse?.status === 200) {
@@ -130,4 +136,24 @@ export async function fetchIssueComments(
   github: InstanceType<typeof ProbotOctokit>
 ) {
   return await github.paginate(github.issues.listComments, issueKey);
+}
+
+/**
+ * Fetch all installations.
+ * @param app
+ */
+export async function fetchAllInstallations(
+  app: Probot
+): Promise<Map<string, number>> {
+  const octokit = await app.auth();
+  const installations = await octokit.paginate(octokit.apps.listInstallations);
+  const installationIdMap = new Map();
+
+  installations.forEach((installation) => {
+    if (installation.account?.login !== undefined) {
+      installationIdMap.set(installation.account.login, installation.id);
+    }
+  });
+
+  return installationIdMap;
 }
