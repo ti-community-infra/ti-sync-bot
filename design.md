@@ -2,7 +2,7 @@
 
 ## 整体思路
 
-ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 Github 上的一些数据同步到数据库当中，它的工作模式主要分为全量同步和增量同步两种模式。
+ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 GitHub 上的一些数据同步到数据库当中，它的工作模式主要分为全量同步和增量同步两种模式。
 
 ### 全量同步
 
@@ -10,19 +10,19 @@ ti-sync-bot（以下简称 Bot ）主要负责将 tidb 社区 Github 上的一�
 
 | 事件名称                         | 事件类型     | 触发说明                                     |
 | ------------------------------- | ----------- | ----------------------------------------- |
-| app.start_up                    | 自定义事件    | 在程序启动时触发，Bot 会获取所有安装了该 Github App 的仓库列表逐一进行全量同步。 |
+| app.start_up                    | 自定义事件    | 在程序启动时触发，Bot 会获取所有安装了该 GitHub App 的仓库列表逐一进行全量同步。 |
 | installation.created            | WebHook 事件 | 当用户初次将 Bot 安装到用户账号或组织账号时触发，用户在安装时可以选择安装到所有仓库或指定仓库，Bot 会针对安装的仓库进行逐一全量同步。 |
-| installation_repositories.added | WebHook 事件 | 用户可以在 Github App 设置对已安装仓库进行添加或删除，当新添加一个仓库时，会触发该事件，Bot 会针对新添加的仓库进行逐一全量同步。 |
+| installation_repositories.added | WebHook 事件 | 用户可以在 GitHub App 设置对已安装仓库进行添加或删除，当新添加一个仓库时，会触发该事件，Bot 会针对新添加的仓库进行逐一全量同步。 |
 
 在全量同步过程当中，同步 Pull Request 和 同步 Issue 两个过程并发进行，同步 Contributor Email 的过程依赖于同步 PR 的数据，因此会在同步 Pull Request 完成之后执行。
 
 ### 增量同步
 
-增量同步的设计目的是为了能够更加及时的将 Github 上的数据同步到数据库当中，避免全量同步在一个较为集中的时间段内产生大量的数据库操作和 API 接口请求。
+增量同步的设计目的是为了能够更加及时的将 GitHub 上的数据同步到数据库当中，避免全量同步在一个较为集中的时间段内产生大量的数据库操作和 API 接口请求。
 
-增量同步是基于 Github 的 WebHook 机制实现的，为了能够在 Bot 启动过程中及时处理 WebHook 发送过来的数据，全量同步和增量同步被设计成并发进行。
+增量同步是基于 GitHub 的 WebHook 机制实现的，为了能够在 Bot 启动过程中及时处理 WebHook 发送过来的数据，全量同步和增量同步被设计成并发进行。
 
-Bot 通过监听以下类型事件来对 Github 数据进行增量同步：
+Bot 通过监听以下类型事件来对 GitHub 数据进行增量同步：
 
 | 事件类型          | 动作类型      | 触发行为     |
 | --------------- | ----------- | ----------- |
@@ -44,7 +44,7 @@ Bot 在将收到的数据同步数据库之前会对收到的 Pull Request、Iss
 
 | 字段名称         | 字段说明     |
 | --------------- | ----------- |
-| status          | PR 的状态可以分为 `open`、`closed` 和 `merged` 三种状态，Github 只提供了 `open` 和 `closed` 两种状态，如果 PR 的 `merged_at` 不为空，则可以判定为 `merged` 状态。 |
+| status          | PR 的状态可以分为 `open`、`closed` 和 `merged` 三种状态，GitHub 只提供了 `open` 和 `closed` 两种状态，如果 PR 的 `merged_at` 不为空，则可以判定为 `merged` 状态。 |
 | label           | 使用逗号分隔多个标签名。 |
 | relation        | 描述的是 PR 作者与公司的关系，其类型包括：`member`、`not member`。 |
 | association     | 即 author_association，描述的是 PR 作者与当前仓库所属 org 的关系，其类型包括：`COLLABORATOR`、`FIRST_TIME_CONTRIBUTOR`、`CONTRIBUTOR`、`MEMBER`、`NONE`。 |
@@ -69,7 +69,7 @@ Bot 会将处于 open 状态的 Pull Request 的相关状态信息同步到数�
 
 `review comment` 指的是在 review 过程中针对指定代码添加的评论内容，可以通过 [pulls.listComments](https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#get-a-review-comment-for-a-pull-request) 接口 review comment 列表。
 
-比较特别的是，在 review 代码的过程中如果使用了 Github 的 "Add single comment" 功能，Github 会自动地添加一条无内容的 review，然后将实际评论（review comment 类型）与之关联。
+比较特别的是，在 review 代码的过程中如果使用了 GitHub 的 "Add single comment" 功能，GitHub 会自动地添加一条无内容的 review，然后将实际评论（review comment 类型）与之关联。
 
 | 字段名称         | 字段说明     |
 | --------------- | ----------- |
