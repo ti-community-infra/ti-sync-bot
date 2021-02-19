@@ -65,7 +65,7 @@ export async function handleIssueCommentEvent(
         await pullService.syncOpenPRLastCommentTime({
           pull: {
             ...pullKey,
-            user: issue.user
+            user: issue.user,
           },
           last_comment_author: comment.user,
           last_comment_time: comment.updated_at,

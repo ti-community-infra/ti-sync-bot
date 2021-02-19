@@ -144,7 +144,7 @@ export async function handlePullRequestReviewCommentEvent(
       await pullService.syncOpenPRLastCommentTime({
         pull: {
           ...pullKey,
-          user: pullRequest.user
+          user: pullRequest.user,
         },
         last_comment_time: comment.updated_at,
         last_comment_author: comment.user,
