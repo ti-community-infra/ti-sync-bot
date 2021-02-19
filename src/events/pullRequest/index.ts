@@ -98,7 +98,7 @@ export async function handlePullRequestReviewEvent(
     case "submitted":
     case "edited":
       await commentService.syncPullRequestReview({
-        ...context.pullRequest(),
+        ...pullKey,
         // TODO: Patch the review update time.
         // Notice: The payload of pull request review does not include update time. The update time of
         // pull request will be changed due to review operations.
@@ -131,7 +131,7 @@ export async function handlePullRequestReviewCommentEvent(
   commentService: ICommentService,
   pullService: IPullService
 ) {
-  const { action, comment, pull_request } = context.payload;
+  const { action, comment, pull_request: pullRequest } = context.payload;
   const pullKey = context.pullRequest();
 
   switch (action) {
@@ -142,13 +142,16 @@ export async function handlePullRequestReviewCommentEvent(
         ...comment,
       });
       await pullService.syncOpenPRLastCommentTime({
-        pull: context.pullRequest(),
+        pull: {
+          ...pullKey,
+          user: pullRequest.user
+        },
         last_comment_time: comment.updated_at,
         last_comment_author: comment.user,
       });
       await pullService.syncPullRequestUpdateTime(
         pullKey,
-        pull_request.updated_at
+        pullRequest.updated_at
       );
       break;
   }
