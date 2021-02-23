@@ -16,5 +16,5 @@ export interface SyncPullQuery {
   closed_at: string | null;
   merged_at: string | null;
   author_association: string;
-  merge_commit_sha: null | string;
+  merge_commit_sha: string | null;
 }
