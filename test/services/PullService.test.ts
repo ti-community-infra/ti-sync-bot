@@ -38,7 +38,7 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        number: 1,
+        number: 2,
         state: "closed",
         title: "First PR",
         body: "",
@@ -51,6 +51,7 @@ describe("Test for PullService", () => {
         updated_at: "2015-09-07 12:14:59.000Z",
         closed_at: "2015-09-07 12:14:59.000Z",
         merged_at: "2015-09-07 12:14:59.000Z",
+        merge_commit_sha: "8f99d03aebad7b253bed293918021fe131bae895",
       };
 
       // Mock the repository function.
@@ -62,8 +63,24 @@ describe("Test for PullService", () => {
 
       // Assert the data that will eventually be saved in the database.
       const pullBeSaved = saveMock.mock.calls[0][0];
-      expect(pullBeSaved.id).toBe(undefined);
-      expect(pullBeSaved.status).toBe("merged");
+
+      expect(pullBeSaved).toStrictEqual({
+        owner: "pingcap",
+        repo: "tidb",
+        pullNumber: 2,
+        status: "merged",
+        title: "First PR",
+        body: "",
+        label: "",
+        association: "MEMBER",
+        relation: "member",
+        user: "c4pt0r",
+        createdAt: "2015-09-06 12:14:59.000Z",
+        updatedAt: "2015-09-07 12:14:59.000Z",
+        closedAt: "2015-09-07 12:14:59.000Z",
+        mergedAt: "2015-09-07 12:14:59.000Z",
+        mergeCommitSha: "8f99d03aebad7b253bed293918021fe131bae895",
+      });
     });
 
     test("PR stored in DB but the received PR data is out of date", async () => {
@@ -84,6 +101,7 @@ describe("Test for PullService", () => {
         updated_at: "2015-09-07 12:14:59.000Z",
         closed_at: "2015-09-07 12:14:59.000Z",
         merged_at: "2015-09-07 12:14:59.000Z",
+        merge_commit_sha: "8f99d03aebad7b253bed293918021fe131bae895",
       };
 
       // Mock the repository function.
@@ -102,7 +120,7 @@ describe("Test for PullService", () => {
       const syncPullQuery = {
         owner: "pingcap",
         repo: "tidb",
-        number: 1,
+        number: 2,
         state: "closed",
         title: "First PR",
         body: "",
@@ -117,11 +135,14 @@ describe("Test for PullService", () => {
         closed_at: "2015-09-07 12:14:59.000Z",
         // Notice: there is no merge time for this test case.
         merged_at: null,
+        merge_commit_sha: null,
       };
 
       // Mock the repository function.
       const pullInDB = new Pull();
       pullInDB.id = 1;
+      pullInDB.pullNumber = 2;
+      pullInDB.createdAt = "2015-09-06 12:14:59.000Z";
       pullInDB.updatedAt = "2016-01-01 00:00:00.000Z";
 
       findOneMock.mockResolvedValue(pullInDB);
@@ -135,8 +156,24 @@ describe("Test for PullService", () => {
 
       const pullBeSaved = saveMock.mock.calls[0][0];
 
-      expect(pullBeSaved.id).toBe(1);
-      expect(pullBeSaved.status).toBe("closed");
+      expect(pullBeSaved).toStrictEqual({
+        id: 1,
+        owner: "pingcap",
+        repo: "tidb",
+        pullNumber: 2,
+        status: "closed",
+        title: "First PR",
+        body: "",
+        label: "",
+        association: "MEMBER",
+        relation: "member",
+        user: "c4pt0r",
+        createdAt: "2015-09-06 12:14:59.000Z",
+        updatedAt: "2016-09-07 12:14:59.000Z",
+        closedAt: "2015-09-07 12:14:59.000Z",
+        mergedAt: null,
+        mergeCommitSha: null,
+      });
     });
 
     test("new pr with labels", async () => {
@@ -156,6 +193,7 @@ describe("Test for PullService", () => {
         updated_at: "2016-09-07 12:14:59.000Z",
         closed_at: "2015-09-07 12:14:59.000Z",
         merged_at: null,
+        merge_commit_sha: null,
       };
 
       // Mock the repository function.
@@ -188,6 +226,7 @@ describe("Test for PullService", () => {
         updated_at: "2016-09-07 12:14:59.000Z",
         closed_at: null,
         merged_at: null,
+        merge_commit_sha: null,
       };
 
       // Mock the repository function.

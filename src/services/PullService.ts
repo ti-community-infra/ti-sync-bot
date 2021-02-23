@@ -149,6 +149,7 @@ export class PullService implements IPullService {
       updatedAt: pullReceived.updated_at,
       closedAt: pullReceived.closed_at,
       mergedAt: pullReceived.merged_at,
+      mergeCommitSha: pullReceived.merge_commit_sha,
     };
   }
 
