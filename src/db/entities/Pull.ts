@@ -69,4 +69,12 @@ export class Pull {
     default: null,
   })
   mergedAt!: string | null;
+
+  @Column({
+    name: "merge_commit_sha",
+    type: "varchar",
+    length: 256,
+    default: null,
+  })
+  mergeCommitSha!: string | null;
 }
