@@ -1,0 +1,23 @@
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: probot
+    versions:
+    - 11.1.0
+    - 11.1.1
+    - 11.2.1
+    - 11.2.2
+    - 11.2.3
+    - 11.2.4
+    - 11.3.0
+  - dependency-name: typescript
+    versions:
+    - 4.1.4
+  - dependency-name: typedi
+    versions:
+    - 0.10.0
