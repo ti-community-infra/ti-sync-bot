@@ -27,7 +27,7 @@
     "mysql": "^2.18.1",
     "probot": "^11.0.6",
     "reflect-metadata": "^0.1.10",
-    "typedi": "^0.8.0",
+    "typedi": "^0.9.1",
     "typeorm": "0.2.32",
     "typeorm-typedi-extensions": "^0.2.3"
   },
