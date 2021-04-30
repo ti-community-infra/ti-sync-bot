@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "mysql": "^2.18.1",
-    "probot": "^11.0.6",
+    "probot": "^11.2.0",
     "reflect-metadata": "^0.1.10",
     "typedi": "^0.8.0",
     "typeorm": "0.2.32",
